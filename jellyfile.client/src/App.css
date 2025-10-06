@@ -1,0 +1,49 @@
+﻿/* couleurs par défaut (login / interface) */
+:root {
+    /* Login colors */
+    --login-bg: #f4f4f4;
+    --login-text: #213547;
+    --login-input-bg: #ffffff;
+    --login-input-text: #213547;
+    --login-button-bg: #e53935;
+    --login-button-text: #ffffff;
+    /* Interface colors */
+    --interface-bg: #ffffff;
+    --interface-topbar-bg: #e53935;
+    --interface-leftbox-bg: #f4f4f4;
+    --interface-leftbox-text: #808080;
+    --interface-rightbox-text: #808080;
+}
+
+/* dark mode override */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --login-bg: #242424;
+        --login-text: rgba(255,255,255,0.87);
+        --login-input-bg: #333;
+        --login-input-text: #ffffff;
+        --login-button-bg: #e53935;
+        --login-button-text: #ffffff;
+        /* Interface colors */
+        --interface-bg: #242424;
+        --interface-topbar-bg: #e53935;
+        --interface-leftbox-bg: #333;
+        --interface-leftbox-text: #ffffff;
+        --interface-rightbox-text: #ffffff;
+    }
+}
+
+#root {
+    //text-align: center;
+    border-radius: 0;
+    box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+th, td {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}

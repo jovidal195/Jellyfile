@@ -1,0 +1,48 @@
+.login-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 30px;
+    border-radius: 10px;
+    background: var(--login-bg);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    color: var(--login-text);
+}
+
+.login-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-container input {
+    margin: 8px 0;
+    background: var(--login-input-bg);
+    border: 1px solid var(--login-input-border);
+    color: var(--login-text);
+}
+
+.login-container button {
+    margin-top: 10px;
+    border: none;
+    background: var(--login-button-bg);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.login-container input,
+.login-container button {
+    box-sizing: border-box; /* inclut padding et border dans le width */
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.login-container button:hover {
+    background: var(--login-button-hover);
+}
+
+.login-error {
+    color: red;
+    text-align: center;
+    margin-top: 10px;
+}
