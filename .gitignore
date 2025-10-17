@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# SQLite DB pour Jellyfile.Server
+jellyfile.Server/jellyfile.db
+jellyfile.Server/jellyfile.db-shm
+jellyfile.Server/jellyfile.db-wal

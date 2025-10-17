@@ -1,5 +1,6 @@
 using Jellyfile.Server;
 using Jellyfile.Server.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,24 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdmin", policy => policy.RequireRole("Admin"));
+});
+
+// Ajouter CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // ton frontend React
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // essentiel pour les cookies
+    });
+});
+
+
 // Ajouter un cache en mémoire pour stocker la session
 builder.Services.AddDistributedMemoryCache();
 
@@ -20,6 +39,7 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(60); // expire après 60 min d'inactivité
     options.Cookie.HttpOnly = true; // pas accessible depuis JS (sécurité) - évite les attaques XSS
     options.Cookie.IsEssential = true; // obligatoire pour le fonctionnement
+    options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = CookieSecurePolicy.None;
 });
 
@@ -35,18 +55,23 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MyDbContext>();
-    db.Database.EnsureCreated(); // crée la DB si elle n'existe pas
+    db.Database.EnsureCreated();
 
     if (!db.Users.Any(u => u.Username == "admin"))
     {
-        db.Users.Add(new User
+        var admin = new User
         {
             Username = "admin",
-            Password = "password" // mot de passe en clair pour l’instant
-        });
+            Role = "Admin",
+            StorageQuotaBytes = 10L * 1024 * 1024 * 1024 // 10GB
+        };
+        var hasher = new PasswordHasher<User>();
+        admin.PasswordHash = hasher.HashPassword(admin, "password");
+        db.Users.Add(admin);
         db.SaveChanges();
     }
 }
+
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -61,7 +86,7 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseRouting();
-
+app.UseCors("AllowReactApp");
 app.UseSession();
 
 app.UseAuthorization();

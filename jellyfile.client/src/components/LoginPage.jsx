@@ -7,7 +7,7 @@ export default function LoginPage({ onLoginSuccess }) {
     const [error, setError] = useState('');
 
     const login = async () => {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('http://localhost:5291/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),

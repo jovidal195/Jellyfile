@@ -1,3 +1,7 @@
+# version 0.0.1
+- implemented initial version
+
+# the visual studio stuff
 This file explains how Visual Studio created the project.
 
 The following tools were used to generate this project:

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import UserMenu from "./UserMenu";
 import UserModal from "./UserModal";
+import MenuProfil from './menuProfil';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -39,7 +40,7 @@ export default function Interface({ user }) {
                     </button>
                 </div>
                 <span className="user-btn" onClick={toggleMenu}>
-                    <FontAwesomeIcon icon={faCircleUser} style={{ 'font-size': '26' }} />
+                    <FontAwesomeIcon icon={faCircleUser} style={{ 'fontSize': '26' }} />
                 </span>
                 {menuOpen &&
                     (isMobile ? (
@@ -53,7 +54,8 @@ export default function Interface({ user }) {
                     Dossiers
                 </div>
                 <div className="right-box">
-                    Zone fichiers
+                    <MenuProfil />
+                    <div id="fileZone">Zone fichiers</div>
                 </div>
             </div>
         </div>

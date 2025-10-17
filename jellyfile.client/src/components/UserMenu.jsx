@@ -1,10 +1,10 @@
-﻿export default function UserMenu({ user, onClose }) {
+﻿import UserActions from './UserActions';
+export default function UserMenu({ user, onClose }) {
     return (
         <div className="user-menu" onClick={(e) => e.stopPropagation()}>
             <div>{user}</div>
             <hr />
-            <button onClick={() => alert("Profil")}>Profil</button>
-            <button onClick={() => alert("Déconnexion")}>Déconnexion</button>
+            <UserActions onClose={onClose} />
         </div>
     );
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Jellyfile.Server;
 using Microsoft.EntityFrameworkCore;
 using Jellyfile.Server.Models;
+using Microsoft.AspNetCore.Identity;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -26,30 +27,56 @@ public class AuthController : ControllerBase
         }
 
         // Vérifie le mot de passe
-        if (user.Password != request.Password)
-        {
-            return Unauthorized("Mot de passe incorrect");
-        }
+        var hasher = new PasswordHasher<User>();
+        var verify = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        if (verify == PasswordVerificationResult.Failed) return Unauthorized("Mot de passe incorrect");
 
-        // Création de la session côté serveur
-        HttpContext.Session.SetString("User", user.Username);
+        HttpContext.Session.SetInt32("UserId", user.Id); // stocke l'id, pas le nom
+        return Ok(new { Username = user.Username });
+    }
 
-        return Ok(new { Message = "Logged in", Username = user.Username });
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        HttpContext.Session.Clear(); // supprime toutes les données de session
+        return Ok(new { message = "Logged out" });
     }
 
     [HttpGet("me")]
-    public IActionResult Me()
+    public async Task<IActionResult> Me()
     {
-        var username = HttpContext.Session.GetString("User");
-        if (username == null)
-            return Unauthorized("Pas de session");
+        var id = HttpContext.Session.GetInt32("UserId");
+        if (id == null)
+            return Unauthorized(new { message = "Pas de session" });
 
-        return Ok(new { Username = username });
+        var user = await _db.Users
+            .Include(u => u.Profile)
+            .FirstOrDefaultAsync(u => u.Id == id);
+
+        if (user == null)
+            return Unauthorized(new { message = "Utilisateur introuvable" });
+
+        return Ok(new
+        {
+            Username = user.Username,
+            Profile = user.Profile != null ? new
+            {
+                user.Profile.FirstName,
+                user.Profile.LastName,
+                user.Profile.Email
+            } : null,
+            Quota = new
+            {
+                user.StorageQuotaBytes,
+                user.StorageUsedBytes
+            }
+        });
     }
+
 }
 
 public class LoginRequest
 {
-    public string Username { get; set; }
-    public string Password { get; set; }
+    public required string Username { get; set; }
+    public required string Password { get; set; }
 }

@@ -1,6 +1,6 @@
 @Jellyfile.Server_HostAddress = http://localhost:5291
 
-GET {{Jellyfile.Server_HostAddress}}/weatherforecast/
-Accept: application/json
+//GET {{Jellyfile.Server_HostAddress}}/weatherforecast/
+//Accept: application/json
 
 ###

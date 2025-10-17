@@ -106,19 +106,24 @@
     z-index: 1000;
 }
 
-    .user-menu button {
-        background: none;
-        border: none;
-        color: inherit;
-        text-align: left;
-        padding: 8px;
-        cursor: pointer;
-        border-radius: 6px;
-    }
+.user-actions{
+    display: flex;
+    flex-direction: column;
+}
 
-        .user-menu button:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
+.user-menu button {
+    background: none;
+    border: none;
+    color: inherit;
+    text-align: left;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.user-menu button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
 
 /* --- MODAL (Mobile) --- */
 .user-modal {
@@ -132,6 +137,14 @@
     justify-content: center;
     align-items: center;
     z-index: 1001;
+}
+
+.modal-content h3 {
+    text-align: center;
+    color: var(--login-input-bg);
+}
+.modal-content .user-actions {
+    gap: 10px;
 }
 
 .modal-content {
@@ -148,13 +161,23 @@
 
 .close-btn {
     background-color: var(--topbar-bg);
-    color: white;
+    color: var(--login-input-bg);
     border: none;
     padding: 8px;
     border-radius: 8px;
     cursor: pointer;
 }
 
-    .close-btn:hover {
-        opacity: 0.8;
+.close-btn:hover {
+    opacity: 0.8;
+}
+
+/* --- GESTION DU PROFIL --- */
+.profile {
+    display:none;
+}
+
+    .profile #userForm > div, .profile #userForm form {
+        display: flex;
+        flex-direction: column;
     }
