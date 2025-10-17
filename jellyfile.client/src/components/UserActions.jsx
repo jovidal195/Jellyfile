@@ -21,7 +21,7 @@
         });
 
         if (res.ok) {
-            const data = await res.json(); // <-- parse le JSON
+            const data = await res.json();
             const profile = document.querySelector(".profile");
             const fileZone = document.querySelector("#fileZone");
 

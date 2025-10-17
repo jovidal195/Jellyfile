@@ -1,4 +1,6 @@
-﻿export default function menuProfil() {
+﻿import { useToast } from "./ToastProvider";
+export default function menuProfil() {
+    const toast = useToast();
 
     const btnSave = async (e) => {
         e.preventDefault();
@@ -6,8 +8,6 @@
         const form = document.querySelector("#userForm form");
         const formData = new FormData(form);
         const body = Object.fromEntries(formData.entries());
-
-        console.log(body);
 
         const res = await fetch('http://localhost:5291/api/profile', {
             method: 'POST',
@@ -17,9 +17,9 @@
         });
 
         if (res.ok) {
-            alert("Profil sauvegardé !");
+            toast("success", "Profil sauvegardé !");
         } else {
-            alert("Erreur lors de la sauvegarde");
+            toast("error", "Impossible de sauvegarder le profil !");
         }
     }
 

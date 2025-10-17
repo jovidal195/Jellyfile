@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
+import { ToastProvider } from "./Components/ToastProvider";
 import LoginPage from './components/LoginPage';
 import Interface from './components/Interface';
 import './App.css';
@@ -23,9 +24,13 @@ function App() {
 
     // Ici on passe setUser à LoginPage
     return user ? (
-        <Interface user={user} />
+        <ToastProvider>
+            <Interface user={user} />
+        </ToastProvider>
     ) : (
-        <LoginPage onLoginSuccess={setUser} />
+        <ToastProvider>
+            <LoginPage onLoginSuccess={setUser} />
+        </ToastProvider>
     );
 }
 
