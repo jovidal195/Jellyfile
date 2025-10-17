@@ -22,12 +22,26 @@ export default function Interface({ user }) {
         setMenuOpen(!menuOpen);
     };
 
+    const return2main = () => {
+        
+        const rightBox = document.querySelector(".right-box");
+        const leftBox = document.querySelector(".left-box");
+
+        rightBox.querySelectorAll(":scope > div").forEach(div => {
+            div.style.display = "none";
+        });
+        leftBox.style.display = "initial";
+        const fileZone = document.querySelector("#fileZone");
+        fileZone.style.display = "initial";
+
+    }
+
     const closeMenu = () => setMenuOpen(false);
 
     return (
         <div className="mainapp-container">
             <header className="top-bar">
-                <span>Jellyfile - {user}</span>  {/* gauche */}
+                <span onClick={ return2main }>Jellyfile</span>  {/* gauche */}
 
                 <div className="search-container">
                     <input

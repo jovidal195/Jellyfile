@@ -24,13 +24,19 @@
             const data = await res.json();
             const profile = document.querySelector(".profile");
             const fileZone = document.querySelector("#fileZone");
+            const leftBox = document.querySelector(".left-box");
 
             profile.style.display = "initial";
             fileZone.style.display = "none";
+            leftBox.style.display = "none";
 
             profile.querySelectorAll("input").forEach(input => {
                 let key = input.name;
-                key = key[0].toLowerCase() + key.slice(1);
+                try {
+                    key = key[0].toLowerCase() + key.slice(1);
+                } catch (err) {
+                    //console.info(err);
+                }
                 input.value = data.profile?.[key] || "";
             });
         } else {
