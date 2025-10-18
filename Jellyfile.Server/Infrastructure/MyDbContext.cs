@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Jellyfile.Server.Models; // <-- important pour le User
+using Jellyfile.Server.Models;
 
-namespace Jellyfile.Server
+namespace Jellyfile.Server.Infrastructure
 {
     public class MyDbContext : DbContext
     {

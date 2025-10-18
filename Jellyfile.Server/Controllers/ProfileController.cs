@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Jellyfile.Server.Models;
-using Jellyfile.Server;
+using Jellyfile.Server.Infrastructure;
 
 namespace Jellyfile.Server.Controllers
 {

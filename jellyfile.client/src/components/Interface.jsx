@@ -41,7 +41,7 @@ export default function Interface({ user }) {
     return (
         <div className="mainapp-container">
             <header className="top-bar">
-                <span onClick={ return2main }>Jellyfile</span>  {/* gauche */}
+                <span onClick={return2main} style={{ "cursor": "pointer", "padding" : "17px"}}>Jellyfile</span>  {/* gauche */}
 
                 <div className="search-container">
                     <input

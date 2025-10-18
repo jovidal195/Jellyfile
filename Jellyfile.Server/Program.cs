@@ -1,4 +1,4 @@
-using Jellyfile.Server;
+using Jellyfile.Server.Infrastructure;
 using Jellyfile.Server.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -44,7 +44,7 @@ builder.Services.AddSession(options =>
 });
 
 // Ajouter le DbContext pour EF Core
-builder.Services.AddDbContext<Jellyfile.Server.MyDbContext>(options =>
+builder.Services.AddDbContext<MyDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
@@ -55,7 +55,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MyDbContext>();
-    db.Database.EnsureCreated();
+    DbInitializer.EnsureDatabaseReady(db);
 
     if (!db.Users.Any(u => u.Username == "admin"))
     {

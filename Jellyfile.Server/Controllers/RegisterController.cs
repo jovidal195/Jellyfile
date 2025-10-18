@@ -1,9 +1,9 @@
 ﻿using Jellyfile.Server.Models;
-using Jellyfile.Server;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Jellyfile.Server.Infrastructure;
 
 [ApiController]
 [Route("api/[controller]")]
