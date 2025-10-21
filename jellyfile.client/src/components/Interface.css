@@ -173,8 +173,8 @@
 }
 
 /* --- GESTION DU PROFIL --- */
-.profile {
-    display:none;
+.submenus {
+    display: none;
 }
 
 .profile > #userForm{

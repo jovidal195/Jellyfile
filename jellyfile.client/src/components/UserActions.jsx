@@ -1,4 +1,7 @@
-﻿export default function UserActions({ onClose }) {
+﻿import { useToast } from "./ToastProvider";
+export default function UserActions({ onClose, return2main }) {
+    const toast = useToast();
+
     const handleLogout = async () => {
         const res = await fetch('http://localhost:5291/api/auth/logout', {
             method: 'POST',
@@ -10,6 +13,15 @@
         } else {
             alert("Erreur lors de la déconnexion");
         }
+    };
+
+    const pagesHideAndDisplay = (displayable) => {
+        const rightBox = document.querySelector(".right-box");
+        rightBox.querySelectorAll(":scope > div").forEach(div => {
+            div.style.display = "none";
+        });
+        const display = document.querySelector(displayable);
+        display.style.display = "initial";
     };
 
     const loadProfile = async () => {
@@ -30,25 +42,45 @@
             fileZone.style.display = "none";
             leftBox.style.display = "none";
 
-            profile.querySelectorAll("input").forEach(input => {
+            profile.querySelectorAll("input, select").forEach(input => {
                 let key = input.name;
-                try {
-                    key = key[0].toLowerCase() + key.slice(1);
-                } catch (err) {
-                    //console.info(err);
-                }
                 input.value = data.profile?.[key] || "";
             });
         } else {
             const err = await res.json().catch(() => null);
             console.error("Erreur backend:", err);
-            alert("Erreur lors du chargement du profil");
+            toast("error", "Erreur lors du chargement du profil");
         }
+    };
+
+    const loadUsers = async () => {
+        onClose();
+
+        /* const res = await fetch('http://localhost:5291/api/profile', {
+            method: 'GET',
+            credentials: 'include'
+        });*/
+
+        //if (res.ok) {
+        //const data = await res.json();
+            pagesHideAndDisplay(".Users");
+            //const profile = document.querySelector(".profile");
+            const leftBox = document.querySelector(".left-box");
+
+            leftBox.style.display = "none";
+
+        /*} else {
+            const err = await res.json().catch(() => null);
+            console.error("Erreur backend:", err);
+            toast("error", "Erreur lors du chargement du profil");
+        }*/
     };
 
     return (
         <span className="user-actions">
+            <button onClick={return2main}>Home</button>
             <button onClick={loadProfile}>Profil</button>
+            <button onClick={loadUsers}>Users</button>
             <button onClick={handleLogout}>Déconnexion</button>
         </span>
     );

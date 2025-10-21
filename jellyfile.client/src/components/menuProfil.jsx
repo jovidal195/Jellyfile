@@ -55,7 +55,7 @@ export default function menuProfil() {
     }, []);
 
     return (
-        <div className="profile">
+        <div className="profile submenus">
 
             {/* IMAGE + OVERLAY */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -80,6 +80,11 @@ export default function menuProfil() {
                     <form>
                         <label>Prénom</label><input name="FirstName"></input>
                         <label>Nom</label><input name="LastName"></input>
+                        <label>Genre</label><select name="Gender">
+                            <option value="">--Choisir une option--</option>  {/* option neutre */}
+                            <option value="Homme">Homme</option>
+                            <option value="Femme">Femme</option>
+                        </select>
                         <label>Courriel</label><input name="Email"></input>
                         <label>Téléphone</label><input name="Phone"></input>
                         <br />

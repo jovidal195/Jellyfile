@@ -2,6 +2,7 @@
 import UserMenu from "./UserMenu";
 import UserModal from "./UserModal";
 import MenuProfil from './menuProfil';
+import MenuUsers from './menuUsers';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -58,9 +59,9 @@ export default function Interface({ user }) {
                 </span>
                 {menuOpen &&
                     (isMobile ? (
-                        <UserModal user={user} onClose={closeMenu} />
+                    <UserModal user={user} onClose={closeMenu} return2main={return2main} />
                     ) : (
-                        <UserMenu user={user} onClose={closeMenu} />
+                        <UserMenu user={user} onClose={closeMenu} return2main={return2main} />
                     ))}
             </header>
             <div className="content">
@@ -68,8 +69,9 @@ export default function Interface({ user }) {
                     Dossiers
                 </div>
                 <div className="right-box">
-                    <MenuProfil />
                     <div id="fileZone">Zone fichiers</div>
+                    <MenuProfil />
+                    <MenuUsers />
                 </div>
             </div>
         </div>

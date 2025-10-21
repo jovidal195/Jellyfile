@@ -33,13 +33,19 @@ namespace Jellyfile.Server.Controllers
                 return NotFound(new { message = "Utilisateur introuvable" });
 
             // Retourne uniquement les infos existantes, profil vide si aucun enregistrement
-            var profileData = user.Profile != null ? new
+            object profileData = null;
+            if (user.Profile != null)
             {
-                user.Profile.FirstName,
-                user.Profile.LastName,
-                user.Profile.Email,
-                user.Profile.Phone
-            } : null;
+                profileData = user.Profile
+                    .GetType()
+                    .GetProperties()
+                    .Where(p => p.PropertyType.IsPrimitive
+                             || p.PropertyType == typeof(string)
+                             || p.PropertyType == typeof(DateTime)
+                             || p.PropertyType == typeof(decimal)
+                             || Nullable.GetUnderlyingType(p.PropertyType) != null)
+                    .ToDictionary(p => p.Name, p => p.GetValue(user.Profile));
+            }
 
             return Ok(new
             {
@@ -65,28 +71,22 @@ namespace Jellyfile.Server.Controllers
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable" });
 
-            // Si le profil n'existe pas, on le crée
+            // Crée le profil s'il n'existe pas
             if (user.Profile == null)
             {
-                user.Profile = new UserProfile
-                {
-                    FirstName = model.FirstName,
-                    LastName = model.LastName,
-                    Email = model.Email,
-                    Phone = model.Phone
-                };
-
+                user.Profile = new UserProfile();
                 _context.UserProfiles.Add(user.Profile);
             }
-            else
-            {
-                // Sinon, on met à jour le profil existant
-                user.Profile.FirstName = model.FirstName;
-                user.Profile.LastName = model.LastName;
-                user.Profile.Email = model.Email;
-                user.Profile.Phone = model.Phone;
 
-                _context.UserProfiles.Update(user.Profile);
+            // Dynamique : parcourt toutes les propriétés du DTO
+            foreach (var prop in typeof(ProfileDto).GetProperties())
+            {
+                var value = prop.GetValue(model);
+                var profileProp = user.Profile.GetType().GetProperty(prop.Name);
+                if (profileProp != null && profileProp.CanWrite)
+                {
+                    profileProp.SetValue(user.Profile, value);
+                }
             }
 
             // Sauvegarde les changements
