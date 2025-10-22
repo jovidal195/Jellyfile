@@ -8,6 +8,7 @@
         public string? Role { get; set; } // ex: "Admin", "User"
         public long StorageQuotaBytes { get; set; } // quota total en octets
         public long StorageUsedBytes { get; set; } // suivi rapide
+        public bool Active {  get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 

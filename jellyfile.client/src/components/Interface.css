@@ -235,3 +235,44 @@
     border-radius: 12px;
     text-align: center;
 }
+
+/* --- GESTION DES UTILISATEURS --- */
+
+.btn-gestion-utilisateurs {
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0.6em 1.2em;
+    font-size: 11pt ;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: var(--login-button-bg);
+    color: var(--login-button-text);
+    cursor: pointer;
+    transition: border-color 0.25s;
+}
+
+.btn-gestion-utilisateurs:hover {
+    border-color: #646cff;
+}
+
+.btn-gestion-utilisateurs:focus,
+.btn-gestion-utilisateurs:focus-visible {
+    outline: 4px auto -webkit-focus-ring-color;
+}
+
+#root .users.submenus {
+    width: 81vw;
+}
+
+.btn-utilisateur-container {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+/* Mode mobile : une colonne */
+@media (max-width: 640px) {
+    .btn-utilisateur-container {
+        display: grid;
+    }
+}

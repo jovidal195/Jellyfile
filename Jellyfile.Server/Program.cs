@@ -63,7 +63,8 @@ using (var scope = app.Services.CreateScope())
         {
             Username = "admin",
             Role = "Admin",
-            StorageQuotaBytes = 10L * 1024 * 1024 * 1024 // 10GB
+            StorageQuotaBytes = 10L * 1024 * 1024 * 1024, // 10GB
+            Active = true
         };
         var hasher = new PasswordHasher<User>();
         admin.PasswordHash = hasher.HashPassword(admin, "password");

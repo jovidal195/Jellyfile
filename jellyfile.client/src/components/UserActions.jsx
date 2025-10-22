@@ -33,13 +33,11 @@ export default function UserActions({ onClose, return2main }) {
         });
 
         if (res.ok) {
+            pagesHideAndDisplay(".profile");
+
             const data = await res.json();
             const profile = document.querySelector(".profile");
-            const fileZone = document.querySelector("#fileZone");
             const leftBox = document.querySelector(".left-box");
-
-            profile.style.display = "initial";
-            fileZone.style.display = "none";
             leftBox.style.display = "none";
 
             profile.querySelectorAll("input, select").forEach(input => {
@@ -55,25 +53,9 @@ export default function UserActions({ onClose, return2main }) {
 
     const loadUsers = async () => {
         onClose();
-
-        /* const res = await fetch('http://localhost:5291/api/profile', {
-            method: 'GET',
-            credentials: 'include'
-        });*/
-
-        //if (res.ok) {
-        //const data = await res.json();
-            pagesHideAndDisplay(".Users");
-            //const profile = document.querySelector(".profile");
-            const leftBox = document.querySelector(".left-box");
-
-            leftBox.style.display = "none";
-
-        /*} else {
-            const err = await res.json().catch(() => null);
-            console.error("Erreur backend:", err);
-            toast("error", "Erreur lors du chargement du profil");
-        }*/
+        pagesHideAndDisplay(".users");
+        const leftBox = document.querySelector(".left-box");
+        leftBox.style.display = "none";
     };
 
     return (

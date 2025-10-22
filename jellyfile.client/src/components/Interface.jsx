@@ -24,7 +24,7 @@ export default function Interface({ user }) {
     };
 
     const return2main = () => {
-        
+        closeMenu()
         const rightBox = document.querySelector(".right-box");
         const leftBox = document.querySelector(".left-box");
 
