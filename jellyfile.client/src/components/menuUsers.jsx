@@ -23,13 +23,7 @@ export default function menuProfil() {
                 const data = await res.json();
                 setUsers(data);
             } catch (err) {
-                toast({
-                    title: "Erreur",
-                    description: err.message,
-                    status: "error",
-                    duration: 5000,
-                    isClosable: true,
-                });
+                toast("error", err.message);
             }
         };
         fetchUsers();
