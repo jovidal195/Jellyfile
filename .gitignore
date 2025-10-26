@@ -366,3 +366,5 @@ FodyWeavers.xsd
 jellyfile.Server/jellyfile.db
 jellyfile.Server/jellyfile.db-shm
 jellyfile.Server/jellyfile.db-wal
+/Jellyfile.Server/jellyfile.db
+/Jellyfile.Server/jellyfile.db-shm
