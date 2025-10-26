@@ -17,7 +17,7 @@ export default function menuProfil() {
         fileInputRef.current?.click();
     };
 
-    const btnSave = async (e) => {
+    const btnSave = async () => {
         //e.preventDefault();
 
         const form = document.querySelector("#userForm form");

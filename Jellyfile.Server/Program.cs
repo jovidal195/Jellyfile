@@ -48,6 +48,24 @@ builder.Services.AddDbContext<MyDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
+// ensure settings file exists (creates settings.yaml with a random secret if missing)
+ConfigYamlHelper.EnsureSettingsFileExists();
+
+// load YAML settings
+var yamlSettings = ConfigYamlHelper.LoadSettingsYaml();
+
+// build a dictionary that allows env vars to override file values
+// Order of precedence (final IConfiguration): appsettings.json < yaml file < environment variables
+builder.Configuration.AddInMemoryCollection(yamlSettings);
+
+// Optionally: log a warning if secret is default-like (not necessary but useful)
+var secret = builder.Configuration["InviteSecret"];
+if (string.IsNullOrEmpty(secret))
+{
+    // fallback generate (shouldn't happen because EnsureSettingsFileExists created one)
+    secret = ConfigYamlHelper.GenerateSecret();
+}
+
 
 var app = builder.Build();
 
@@ -86,6 +104,13 @@ if (app.Environment.IsDevelopment())
 
 //app.UseHttpsRedirection();
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
+
 app.UseRouting();
 app.UseCors("AllowReactApp");
 app.UseSession();
@@ -94,6 +119,12 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapFallbackToFile("/index.html");
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers(); // tes /api/*
+
+    // <-- TOUT le reste redirigé vers React index.html
+    endpoints.MapFallbackToFile("index.html");
+});
 
 app.Run();

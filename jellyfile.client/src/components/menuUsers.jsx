@@ -9,11 +9,16 @@ import ToggleSwitch from "./ToggleSwitch";
 
 export default function menuProfil() {
     const [isModalOpen, setModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState(null);
     const [users, setUsers] = useState([]);
     const [filterText, setFilterText] = useState("");
 
     const toast = useToast();
 
+    const openModal = (mode) => {
+        setModalMode(mode);
+        setModalOpen(true);
+    };
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -28,6 +33,23 @@ export default function menuProfil() {
         };
         fetchUsers();
     }, [toast]);
+
+    const copyInvite = (email) => {
+        fetch("/api/invite/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        })
+        .then(res => res.json())
+        .then(data => {
+            navigator.clipboard.writeText(data.link);
+            toast("success",`Lien d'invitation copié pour ${email}`);
+        })
+        .catch(err => {
+            console.error(err);
+            toast("error" ,`Erreur pour ${email}`);
+        });
+    }
 
     const columns = [
         { name: "ID", selector: row => row.id, sortable: true, omit: true }, // masqué
@@ -66,11 +88,10 @@ export default function menuProfil() {
             )
         },
         {
-            name: "Actions",
+            name: "Invitation",
             cell: row => (
                 <button
-                    className="px-2 py-1 bg-blue-500 text-white rounded"
-                    onClick={() => toast("info", `User ${row.username}, active: ${row.active}`)}
+                    onClick={() => copyInvite(row.username)}
                 >
                     Voir
                 </button>
@@ -95,7 +116,7 @@ export default function menuProfil() {
                 style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
             />
             <button
-                onClick={() => alert("Ajouter utilisateur")}    
+                onClick={() => openModal("addUser")}
                 className="btn-gestion-utilisateurs"
             >
                 Ajouter un utilisateur
@@ -130,7 +151,30 @@ export default function menuProfil() {
 
             {/* MODAL */}
             <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)}>
-                {/* Contenu du modal */}
+                {modalMode === "addUser" && ( <div>
+                    <h3>Ajouter un utilisateur</h3>
+                    <form style={{ 'display': 'grid' }}>
+                        <label>Utilisateur</label><input type="text" style={{ "padding" : "8px" }}></input>
+                    </form>
+                    <div style={{ marginTop: "10px" }}>
+                        <button onClick={() => setModalOpen(false)}>Annuler</button>
+                        <button onClick={() => {
+                            toast("success", "Utilisateur sauvegardé !");
+                            setModalOpen(false);
+                        }}>Confirmer</button>
+                    </div>
+                </div>)}
+                {modalMode === "deleteUser" && (<div>
+                    <h3>Ajouter un utilisateur</h3>
+                    <label>Utilisateur</label><select><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+                    <div style={{ marginTop: "10px" }}>
+                        <button onClick={() => setModalOpen(false)}>Annuler</button>
+                        <button onClick={() => {
+                            toast("success", "Avatar sauvegardé !");
+                            setModalOpen(false);
+                        }}>Confirmer</button>
+                    </div>
+                </div>)}
             </Modal>
         </div>
     );

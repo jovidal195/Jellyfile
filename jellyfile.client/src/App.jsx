@@ -2,13 +2,14 @@
 import { ToastProvider } from "./Components/ToastProvider";
 import LoginPage from './components/LoginPage';
 import Interface from './components/Interface';
+import InvitePage from './components/InvitePage'; // ton composant déjà créé
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 
 function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Vérifie la session au montage
     useEffect(() => {
         fetch('http://localhost:5291/api/auth/me', { credentials: 'include' })
             .then(res => {
@@ -22,14 +23,20 @@ function App() {
 
     if (loading) return <div>Chargement...</div>;
 
-    // Ici on passe setUser à LoginPage
-    return user ? (
+    return (
         <ToastProvider>
-            <Interface user={user} />
-        </ToastProvider>
-    ) : (
-        <ToastProvider>
-            <LoginPage onLoginSuccess={setUser} />
+            <Router>
+                <Routes>
+                    {/* Route principale selon l’état de login */}
+                    {user ? (
+                        <Route path="/*" element={<Interface user={user} />} />
+                    ) : (
+                        <Route path="/*" element={<LoginPage onLoginSuccess={setUser} />} />
+                    )}
+                    {/* Route pour l’invitation */}
+                    <Route path="/invite" element={<InvitePage />} />
+                </Routes>
+            </Router>
         </ToastProvider>
     );
 }
