@@ -1,8 +1,11 @@
 ﻿export function bindEnterForVisible(menuSelector, callback) {
     const handler = (e) => {
         const menu = document.querySelector(menuSelector);
-        // Si menu existe ET est visible
-        if (!menu || menu.style.display === "none") return;
+        if (!menu) return;
+
+        const style = window.getComputedStyle(menu);
+        const isHidden = style.display === "none" || style.visibility === "hidden" || style.opacity === "0";
+        if (isHidden) return;
 
         if (e.key === "Enter") {
             e.preventDefault();
