@@ -11,6 +11,7 @@ import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-ico
 export default function Interface({ user }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [users, setUsers] = useState([]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -59,9 +60,9 @@ export default function Interface({ user }) {
                 </span>
                 {menuOpen &&
                     (isMobile ? (
-                    <UserModal user={user} onClose={closeMenu} return2main={return2main} />
+                    <UserModal user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} />
                     ) : (
-                        <UserMenu user={user} onClose={closeMenu} return2main={return2main} />
+                        <UserMenu user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} />
                     ))}
             </header>
             <div className="content">
@@ -71,7 +72,7 @@ export default function Interface({ user }) {
                 <div className="right-box">
                     <div id="fileZone">Zone fichiers</div>
                     <MenuProfil />
-                    <MenuUsers />
+                    <MenuUsers users={users} setUsers={setUsers} />
                 </div>
             </div>
         </div>

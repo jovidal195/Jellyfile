@@ -1,5 +1,6 @@
 ﻿import { useToast } from "./ToastProvider";
-export default function UserActions({ onClose, return2main }) {
+import { useState } from "react";
+export default function UserActions({ onClose, return2main, setUsers }) {
     const toast = useToast();
 
     const handleLogout = async () => {
@@ -56,6 +57,15 @@ export default function UserActions({ onClose, return2main }) {
         pagesHideAndDisplay(".users");
         const leftBox = document.querySelector(".left-box");
         leftBox.style.display = "none";
+
+        try {
+            const res = await fetch("/api/Users/all");
+            if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
+            const data = await res.json();
+            setUsers(data);  // mets à jour ton state
+        } catch (err) {
+            toast("error", err.message); // toast fonctionne correctement
+        }
     };
 
     return (

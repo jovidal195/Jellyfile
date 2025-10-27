@@ -1,5 +1,5 @@
 ﻿import { useToast } from "./ToastProvider";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 //import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 //import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
@@ -7,10 +7,9 @@ import Modal from "./Modal";
 import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
 
-export default function menuProfil() {
+export default function menuUsers({ users, setUsers }) {
     const [isModalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState(null);
-    const [users, setUsers] = useState([]);
     const [filterText, setFilterText] = useState("");
 
     const toast = useToast();
@@ -19,20 +18,6 @@ export default function menuProfil() {
         setModalMode(mode);
         setModalOpen(true);
     };
-
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const res = await fetch("/api/Users/all");
-                if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
-                const data = await res.json();
-                setUsers(data);
-            } catch (err) {
-                toast("error", err.message);
-            }
-        };
-        fetchUsers();
-    }, [toast]);
 
     const copyInvite = (email) => {
         fetch("/api/invite/generate", {
