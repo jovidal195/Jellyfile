@@ -16,7 +16,9 @@ function App() {
                 if (res.ok) return res.json();
                 throw new Error('Not logged in');
             })
-            .then(data => setUser(data.username))
+            .then(data => {
+                setUser(data);
+            })
             .catch(() => setUser(null))
             .finally(() => setLoading(false));
     }, []);
@@ -29,7 +31,7 @@ function App() {
                 <Routes>
                     {/* Route principale selon l’état de login */}
                     {user ? (
-                        <Route path="/*" element={<Interface user={user} />} />
+                        <Route path="/*" element={<Interface />} />
                     ) : (
                         <Route path="/*" element={<LoginPage onLoginSuccess={setUser} />} />
                     )}

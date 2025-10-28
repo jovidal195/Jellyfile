@@ -2,9 +2,9 @@
 export default function UserMenu({ user, onClose, return2main, setUsers }) {
     return (
         <div className="user-menu" onClick={(e) => e.stopPropagation()}>
-            <div>{user}</div>
+            <div>{user.username}</div>
             <hr />
-            <UserActions onClose={onClose} return2main={return2main} setUsers={setUsers} />
+            <UserActions user={user} onClose={onClose} return2main={return2main} setUsers={setUsers} />
         </div>
     );
 }

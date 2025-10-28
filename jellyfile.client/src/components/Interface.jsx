@@ -8,15 +8,32 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
 
-export default function Interface({ user }) {
+export default function Interface() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [users, setUsers] = useState([]);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener("resize", checkMobile);
         return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    useEffect(() => {
+        fetch('http://localhost:5291/api/auth/me', { credentials: 'include' })
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error('Not logged in');
+            })
+            .then(data => {
+                console.log("Auth/me data:", data);
+                setUser(data);
+            })
+            .catch(() => {
+                console.error("erreur");
+                setUser(null)
+            })
     }, []);
 
     const toggleMenu = (e) => {
@@ -72,7 +89,9 @@ export default function Interface({ user }) {
                 <div className="right-box">
                     <div id="fileZone">Zone fichiers</div>
                     <MenuProfil />
-                    <MenuUsers users={users} setUsers={setUsers} />
+                    {user?.role === "Admin" && (
+                        <MenuUsers users={users} setUsers={setUsers} />
+                    )}
                 </div>
             </div>
         </div>

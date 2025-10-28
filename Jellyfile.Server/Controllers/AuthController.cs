@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
+﻿using Jellyfile.Server.Infrastructure;
 using Jellyfile.Server.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Jellyfile.Server.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -31,6 +33,22 @@ public class AuthController : ControllerBase
         var verify = hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (verify == PasswordVerificationResult.Failed) return Unauthorized("Mot de passe incorrect");
 
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.Name, user.Username),
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+    };
+
+        if (user.Role != null)
+            claims.Add(new Claim(ClaimTypes.Role, user.Role));
+
+        var identity = new ClaimsIdentity(claims, "JellyCookie");
+        var principal = new ClaimsPrincipal(identity);
+
+        // ✅ Sign-in et génération du cookie JellyCookie
+        await HttpContext.SignInAsync("JellyCookie", principal);
+
+
         HttpContext.Session.SetInt32("UserId", user.Id); // stocke l'id, pas le nom
         return Ok(new { Username = user.Username });
     }
@@ -38,6 +56,7 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public IActionResult Logout()
     {
+        HttpContext.SignOutAsync("JellyCookie");
         HttpContext.Session.Clear(); // supprime toutes les données de session
         return Ok(new { message = "Logged out" });
     }
@@ -59,6 +78,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             Username = user.Username,
+            Role = user.Role,
             Profile = user.Profile != null ? new
             {
                 user.Profile.FirstName,

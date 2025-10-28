@@ -24,8 +24,9 @@ public class RegisterController : ControllerBase
             return Conflict("Utilisateur existant");
 
         var user = new User { Username = req.Username, StorageQuotaBytes = 1L * 1024 * 1024 * 1024 };
+        var randomPassword = Path.GetRandomFileName();
         var hasher = new PasswordHasher<User>();
-        user.PasswordHash = hasher.HashPassword(user, req.Password);
+        user.PasswordHash = hasher.HashPassword(user, randomPassword);
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
@@ -37,5 +38,4 @@ public class RegisterController : ControllerBase
 public class RegisterRequest
 {
     public string Username { get; set; } = null!;
-    public string Password { get; set; } = null!;
 }

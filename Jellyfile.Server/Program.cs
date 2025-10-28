@@ -12,6 +12,29 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddAuthentication("JellyCookie")
+    .AddCookie("JellyCookie", options =>
+    {
+        options.LoginPath = "/api/auth/login";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.None; // dev
+        options.SlidingExpiration = true;
+
+        // IMPORTANT pour API
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        };
+    });
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireAdmin", policy => policy.RequireRole("Admin"));
@@ -114,6 +137,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 app.UseRouting();
 app.UseCors("AllowReactApp");
 app.UseSession();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

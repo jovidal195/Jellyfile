@@ -1,6 +1,6 @@
 ﻿import { useToast } from "./ToastProvider";
 import { useState } from "react";
-export default function UserActions({ onClose, return2main, setUsers }) {
+export default function UserActions({ user, onClose, return2main, setUsers }) {
     const toast = useToast();
 
     const handleLogout = async () => {
@@ -72,7 +72,9 @@ export default function UserActions({ onClose, return2main, setUsers }) {
         <span className="user-actions">
             <button onClick={return2main}>Home</button>
             <button onClick={loadProfile}>Profil</button>
-            <button onClick={loadUsers}>Users</button>
+            {user?.role === "Admin" && (
+                <button onClick={loadUsers}>Users</button>
+            )}
             <button onClick={handleLogout}>Déconnexion</button>
         </span>
     );

@@ -1,11 +1,12 @@
 ﻿import { useToast } from "./ToastProvider";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 //import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 //import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 import Modal from "./Modal";
 import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
+import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 
 export default function menuUsers({ users, setUsers }) {
     const [isModalOpen, setModalOpen] = useState(false);
@@ -78,7 +79,7 @@ export default function menuUsers({ users, setUsers }) {
                 <button
                     onClick={() => copyInvite(row.username)}
                 >
-                    Voir
+                    Copier
                 </button>
             )
         }
@@ -115,6 +116,44 @@ export default function menuUsers({ users, setUsers }) {
         </div>
     );
 
+    const createUser = async () => {
+        try {
+            const newUserForm = document.querySelector("#newUserForm")
+            const formData = new FormData(newUserForm);
+            const body = Object.fromEntries(formData.entries());
+            console.log(body);
+            const res = await fetch(`http://localhost:5291/api/register`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const text = await res.text();
+            if (res.status === 409) {
+                toast("error", text);
+            } else if (res.status === 401 || res.status === 403) {
+                toast("error", res.statusText);
+            } else {
+                toast("success", "Utilisateur sauvegardé !");
+                setModalOpen(false);
+            }
+            console.log(res);
+            console.log(text);
+            
+        } catch (err) {
+            console.error(err);
+            toast("error", "L'utilisateur n'a pas été créer");
+            setModalOpen(false);
+        }
+    };
+
+    useEffect(() => {
+        if (modalMode === "addUser" && isModalOpen) {
+            const unbind = bindEnterForVisible("#newUserForm", createUser);
+            return unbind; // détache le listener quand le modal se ferme
+        }
+    }, [modalMode, isModalOpen]);
+
     return (
         <div className="users submenus">
 
@@ -138,15 +177,12 @@ export default function menuUsers({ users, setUsers }) {
             <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)}>
                 {modalMode === "addUser" && ( <div>
                     <h3>Ajouter un utilisateur</h3>
-                    <form style={{ 'display': 'grid' }}>
-                        <label>Utilisateur</label><input type="text" style={{ "padding" : "8px" }}></input>
+                    <form style={{ 'display': 'grid' }} id="newUserForm">
+                        <label>Utilisateur</label><input type="text" style={{ "padding": "8px" }} name="username"></input>
                     </form>
                     <div style={{ marginTop: "10px" }}>
                         <button onClick={() => setModalOpen(false)}>Annuler</button>
-                        <button onClick={() => {
-                            toast("success", "Utilisateur sauvegardé !");
-                            setModalOpen(false);
-                        }}>Confirmer</button>
+                        <button onClick={createUser}>Confirmer</button>
                     </div>
                 </div>)}
                 {modalMode === "deleteUser" && (<div>
