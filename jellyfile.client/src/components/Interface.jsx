@@ -27,7 +27,6 @@ export default function Interface() {
                 throw new Error('Not logged in');
             })
             .then(data => {
-                console.log("Auth/me data:", data);
                 setUser(data);
             })
             .catch(() => {

@@ -68,7 +68,7 @@ export default function InvitePage() {
 
         try {
             const token = new URLSearchParams(window.location.search).get("token");
-            const res = await fetch(`http://localhost:5291/api/invite/activate/${encodeURIComponent(token)}`, {
+            const res = await fetch(`http://localhost:5291/api/users/activate/${encodeURIComponent(token)}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ password })

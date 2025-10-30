@@ -7,10 +7,12 @@ import Modal from "./Modal";
 import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
 import { bindEnterForVisible } from "../utils/bindEnterForVisible";
+import Select from 'react-select';
 
 export default function menuUsers({ users, setUsers }) {
     const [isModalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
     const [filterText, setFilterText] = useState("");
 
     const toast = useToast();
@@ -21,7 +23,7 @@ export default function menuUsers({ users, setUsers }) {
     };
 
     const copyInvite = (email) => {
-        fetch("/api/invite/generate", {
+        fetch("/api/users/invite", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email })
@@ -108,7 +110,7 @@ export default function menuUsers({ users, setUsers }) {
                 Ajouter un utilisateur
             </button>
             <button
-                onClick={() => alert("Supprimer utilisateur")}
+                onClick={() => openModal("deleteUser")}
                 className="btn-gestion-utilisateurs"
             >
                 Supprimer un utilisateur
@@ -122,7 +124,7 @@ export default function menuUsers({ users, setUsers }) {
             const formData = new FormData(newUserForm);
             const body = Object.fromEntries(formData.entries());
             console.log(body);
-            const res = await fetch(`http://localhost:5291/api/register`, {
+            const res = await fetch(`http://localhost:5291/api/users/register`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
@@ -131,21 +133,60 @@ export default function menuUsers({ users, setUsers }) {
             const text = await res.text();
             if (res.status === 409) {
                 toast("error", text);
-            } else if (res.status === 401 || res.status === 403) {
+            } else if (res.status === 401 || res.status === 403 || res.status === 405) {
                 toast("error", res.statusText);
             } else {
                 toast("success", "Utilisateur sauvegardé !");
                 setModalOpen(false);
             }
-            console.log(res);
-            console.log(text);
-            
+
+            try {
+                const res = await fetch("/api/Users/all");
+                if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
+                const data = await res.json();
+                setUsers(data);  // mets à jour ton state
+            } catch (err) {
+                toast("error", err.message); // toast fonctionne correctement
+            }            
         } catch (err) {
             console.error(err);
             toast("error", "L'utilisateur n'a pas été créer");
             setModalOpen(false);
         }
     };
+
+    const removeUser = async () => {
+        try {
+            const res = await fetch(`http://localhost:5291/api/users/remove/${selectedUserId}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
+            const text = await res.text();
+            if (res.status === 409) {
+                toast("error", text);
+            } else if (res.status === 401 || res.status === 403 || res.status === 405) {
+                toast("error", res.statusText);
+            } else {
+                toast("success", "Utilisateur supprimé !");
+                setModalOpen(false);
+            }
+
+            try {
+                const res = await fetch("/api/Users/all");
+                if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
+                const data = await res.json();
+                setUsers(data);  // mets à jour ton state
+            } catch (err) {
+                toast("error", err.message); // toast fonctionne correctement
+            }
+        } catch (err) {
+            console.error(err);
+            toast("error", "L'utilisateur n'a pas été créer");
+            setModalOpen(false);
+        }
+    };
+
+    const userOptions = users.map(u => ({ value: u.id, label: u.username }));
 
     useEffect(() => {
         if (modalMode === "addUser" && isModalOpen) {
@@ -187,13 +228,19 @@ export default function menuUsers({ users, setUsers }) {
                 </div>)}
                 {modalMode === "deleteUser" && (<div>
                     <h3>Ajouter un utilisateur</h3>
-                    <label>Utilisateur</label><select><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+                    <form style={{ 'display': 'grid' }} id="newUserForm">
+                    <label>Utilisateur</label>
+                    <Select
+                        options={userOptions}
+                        value={userOptions.find(u => u.value === selectedUserId)}
+                        id="deleteUser"
+                        onChange={option => setSelectedUserId(option.value)}
+                        placeholder="Sélectionnez un utilisateur"
+                        />
+                    </form>
                     <div style={{ marginTop: "10px" }}>
                         <button onClick={() => setModalOpen(false)}>Annuler</button>
-                        <button onClick={() => {
-                            toast("success", "Avatar sauvegardé !");
-                            setModalOpen(false);
-                        }}>Confirmer</button>
+                        <button onClick={removeUser}>Confirmer</button>
                     </div>
                 </div>)}
             </Modal>
