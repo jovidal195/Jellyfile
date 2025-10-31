@@ -1,4 +1,5 @@
-﻿import { useToast } from "./ToastProvider";
+﻿import UserProfile from "./userProfile";
+import { useToast } from "./ToastProvider";
 import { useEffect, useRef, useState } from "react";
 import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -77,18 +78,7 @@ export default function menuProfil() {
             {/* FORMULAIRE */}
             <div id="userForm">
                 <div>
-                    <form>
-                        <label>Prénom</label><input name="FirstName"></input>
-                        <label>Nom</label><input name="LastName"></input>
-                        <label>Genre</label><select name="Gender">
-                            <option value="">--Choisir une option--</option>  {/* option neutre */}
-                            <option value="Homme">Homme</option>
-                            <option value="Femme">Femme</option>
-                        </select>
-                        <label>Courriel</label><input name="Email"></input>
-                        <label>Téléphone</label><input name="Phone"></input>
-                        <br />
-                    </form>
+                    <UserProfile />
                     <button onClick={btnSave}>Sauvegarder</button>
                 </div>
             </div>

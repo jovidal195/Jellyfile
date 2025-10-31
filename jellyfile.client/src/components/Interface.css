@@ -187,6 +187,10 @@
     flex-direction: column;
 }
 
+.profile #userForm form input, .profile #userForm form select {
+    padding: 8px;
+}
+
 #userImg {
     position:relative;
     padding: 30px;
@@ -268,6 +272,16 @@
     display: flex;
     gap: 8px;
     width: 100%;
+}
+
+#userProfileForm form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#userProfileForm form input, #userProfileForm form select  {
+    padding: 8px;
 }
 
 /* Mode mobile : une colonne */

@@ -1,4 +1,5 @@
-﻿import { useToast } from "./ToastProvider";
+﻿import UserProfile from "./userProfile";
+import { useToast } from "./ToastProvider";
 import { useState, useEffect } from "react";
 //import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -17,7 +18,8 @@ export default function menuUsers({ users, setUsers }) {
 
     const toast = useToast();
 
-    const openModal = (mode) => {
+    const openModal = (mode, row) => {
+        setSelectedUserId(row?.id || null);
         setModalMode(mode);
         setModalOpen(true);
     };
@@ -43,7 +45,7 @@ export default function menuUsers({ users, setUsers }) {
         { name: "ID", selector: row => row.id, sortable: true, omit: true }, // masqué
         { name: "Nom d’utilisateur", selector: row => row.username, sortable: true },
         { name: "Rôle", selector: row => row.role, sortable: true },
-        { name: "Quota", selector: row => (row.storageQuotaBytes / 1024 / 1024 / 1024).toFixed(2) + " Go", sortable: true },
+        { name: "Quota", selector: row => `${(row.storageUsedBytes / 1024 / 1024 / 1024).toFixed(2)}/${(row.storageQuotaBytes / 1024 / 1024 / 1024).toFixed(2)} Go`, sortable: true },
         { name: "Prénom", selector: row => row.profile?.firstName ?? "" },
         { name: "Nom", selector: row => row.profile?.lastName ?? "" },
         { name: "Courriel", selector: row => row.profile?.email ?? "" },
@@ -69,6 +71,7 @@ export default function menuUsers({ users, setUsers }) {
 
                         } catch (err) {
                             console.error(err);
+                            toast("error", err.message);
                         }
                     }}
                     locked={row.username === "admin"}
@@ -82,6 +85,16 @@ export default function menuUsers({ users, setUsers }) {
                     onClick={() => copyInvite(row.username)}
                 >
                     Copier
+                </button>
+            )
+        },
+        {
+            name: "Profil",
+            cell: row => (
+                <button
+                    onClick={() => openModal("profileUser", row)}
+                >
+                    Modifier
                 </button>
             )
         }
@@ -104,19 +117,30 @@ export default function menuUsers({ users, setUsers }) {
                 style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
             />
             <button
-                onClick={() => openModal("addUser")}
+                onClick={() => openModal("addUser", null)}
                 className="btn-gestion-utilisateurs"
             >
                 Ajouter un utilisateur
             </button>
             <button
-                onClick={() => openModal("deleteUser")}
+                onClick={() => openModal("deleteUser", null)}
                 className="btn-gestion-utilisateurs"
             >
                 Supprimer un utilisateur
             </button>
         </div>
     );
+
+    const refreshUsers = async() => {
+        try {
+            const res = await fetch("/api/Users/all");
+            if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
+            const data = await res.json();
+            setUsers(data);  // mets à jour ton state
+        } catch (err) {
+            toast("error", err.message); // toast fonctionne correctement
+        }
+    }
 
     const createUser = async () => {
         try {
@@ -136,18 +160,11 @@ export default function menuUsers({ users, setUsers }) {
             } else if (res.status === 401 || res.status === 403 || res.status === 405) {
                 toast("error", res.statusText);
             } else {
-                toast("success", "Utilisateur sauvegardé !");
+                toast("success", "Utilisateur sauvegardé");
                 setModalOpen(false);
             }
 
-            try {
-                const res = await fetch("/api/Users/all");
-                if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
-                const data = await res.json();
-                setUsers(data);  // mets à jour ton state
-            } catch (err) {
-                toast("error", err.message); // toast fonctionne correctement
-            }            
+            refreshUsers()        
         } catch (err) {
             console.error(err);
             toast("error", "L'utilisateur n'a pas été créer");
@@ -167,31 +184,66 @@ export default function menuUsers({ users, setUsers }) {
             } else if (res.status === 401 || res.status === 403 || res.status === 405) {
                 toast("error", res.statusText);
             } else {
-                toast("success", "Utilisateur supprimé !");
+                toast("success", "Utilisateur supprimé");
                 setModalOpen(false);
             }
 
-            try {
-                const res = await fetch("/api/Users/all");
-                if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
-                const data = await res.json();
-                setUsers(data);  // mets à jour ton state
-            } catch (err) {
-                toast("error", err.message); // toast fonctionne correctement
-            }
+            refreshUsers()
         } catch (err) {
             console.error(err);
-            toast("error", "L'utilisateur n'a pas été créer");
+            toast("error", "L'utilisateur n'a pas été supprimer");
             setModalOpen(false);
         }
     };
 
     const userOptions = users.map(u => ({ value: u.id, label: u.username }));
 
+    const saveProfile = async () => {
+
+        const form = document.querySelector("#userProfileForm form");
+        const formData = new FormData(form);
+        const body = Object.fromEntries(formData.entries());
+
+        if (selectedUserId != null) {
+            body.UserId = selectedUserId;
+        }
+
+
+        const res = await fetch('http://localhost:5291/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+            toast("success", "Profil sauvegardé !");
+        } else {
+            toast("error", "Impossible de sauvegarder le profil !");
+        }
+        setModalOpen(false);
+        refreshUsers()
+    }
+
     useEffect(() => {
         if (modalMode === "addUser" && isModalOpen) {
             const unbind = bindEnterForVisible("#newUserForm", createUser);
             return unbind; // détache le listener quand le modal se ferme
+        }
+        if (modalMode === "profileUser" && isModalOpen) {
+            const user = users.find(u => u.id === selectedUserId);
+            const profile = document.querySelector("#userProfileForm");
+            if (!profile || !user) return;
+
+            profile.querySelectorAll("input, select").forEach(input => {
+                let key = input.name;
+                key = key.charAt(0).toLowerCase() + key.slice(1);
+                input.value = user.profile?.[key] || "";
+                
+                if (key == "storageQuotaBytes") {
+                    input.value = user[key] || ""
+                }
+            });
         }
     }, [modalMode, isModalOpen]);
 
@@ -228,7 +280,7 @@ export default function menuUsers({ users, setUsers }) {
                 </div>)}
                 {modalMode === "deleteUser" && (<div>
                     <h3>Ajouter un utilisateur</h3>
-                    <form style={{ 'display': 'grid' }} id="newUserForm">
+                    <form style={{ 'display': 'grid' }} id="deleteUserForm">
                     <label>Utilisateur</label>
                     <Select
                         options={userOptions}
@@ -241,6 +293,16 @@ export default function menuUsers({ users, setUsers }) {
                     <div style={{ marginTop: "10px" }}>
                         <button onClick={() => setModalOpen(false)}>Annuler</button>
                         <button onClick={removeUser}>Confirmer</button>
+                    </div>
+                </div>)}
+                {modalMode === "profileUser" && (<div>
+                    <h3>Profil utilisateur</h3>
+                    <div id="userProfileForm">
+                        <UserProfile user={{"role":"Admin"}} />
+                    </div>
+                    <div style={{ marginTop: "10px" }}>
+                        <button onClick={() => setModalOpen(false)}>Annuler</button>
+                        <button onClick={saveProfile}>Confirmer</button>
                     </div>
                 </div>)}
             </Modal>
