@@ -5,12 +5,18 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var projectRoot = UserFolderService.FindProjectRoot();
+var userRootPath = Path.Combine(projectRoot, "users");
+Directory.CreateDirectory(userRootPath);
+
 // Add services to the container.
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddSingleton(new UserFolderService(userRootPath));
 
 builder.Services.AddAuthentication("JellyCookie")
     .AddCookie("JellyCookie", options =>
@@ -112,6 +118,14 @@ using (var scope = app.Services.CreateScope())
         db.Users.Add(admin);
         db.SaveChanges();
     }
+
+    FileTypeInitializer.EnsureFileTypesExist(db);
+    FileExtensionInitializer.EnsureFileExtensionsExist(db);
+
+    // --- Synchronisation des dossiers utilisateurs ---
+    var users = db.Users.ToList();
+    var userFolderService = new UserFolderService(userRootPath);
+    userFolderService.SyncUserFolders(users);
 }
 
 

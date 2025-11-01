@@ -3,6 +3,7 @@ import UserMenu from "./UserMenu";
 import UserModal from "./UserModal";
 import MenuProfil from './menuProfil';
 import MenuUsers from './menuUsers';
+import FileZone from './FileZone';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -13,6 +14,7 @@ export default function Interface() {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [users, setUsers] = useState([]);
     const [user, setUser] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -54,6 +56,20 @@ export default function Interface() {
 
     }
 
+    const handleFileSelect = (file) => {
+        setSelectedFile(file);
+
+        // cacher fileZone et afficher ton menu upload
+        const fileZone = document.querySelector("#fileZone");
+        if (fileZone) fileZone.style.display = "none";
+
+        const rightBox = document.querySelector(".right-box");
+        rightBox.querySelectorAll(":scope > div").forEach(div => div.style.display = "none");
+
+        // afficher le menu d'upload
+        document.querySelector("#uploadMenu").style.display = "block";
+    };
+
     const closeMenu = () => setMenuOpen(false);
 
     return (
@@ -86,7 +102,7 @@ export default function Interface() {
                     Dossiers
                 </div>
                 <div className="right-box">
-                    <div id="fileZone">Zone fichiers</div>
+                    <FileZone user={user} onFileSelect={handleFileSelect} />
                     <MenuProfil />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />

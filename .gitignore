@@ -370,4 +370,4 @@ jellyfile.Server/jellyfile.db-wal
 /Jellyfile.Server/jellyfile.db-shm
 /Jellyfile.Server/jellyfile.db-shm
 /Jellyfile.Server/jellyfile.db-wal
-/users/admin
+/users/*

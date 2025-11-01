@@ -19,11 +19,13 @@ namespace Jellyfile.Server.Controllers
     {
         private readonly IConfiguration _config;
         private readonly MyDbContext _db;
+        private readonly UserFolderService _userFolderService;
 
-        public UsersController(IConfiguration config, MyDbContext db)
+        public UsersController(IConfiguration config, MyDbContext db, UserFolderService userFolderService)
         {
             _config = config;
             _db = db;
+            _userFolderService = userFolderService;
         }
 
         [HttpGet("all")]
@@ -102,6 +104,8 @@ namespace Jellyfile.Server.Controllers
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
+            _userFolderService.EnsureFolderForUser(user);
+
             return Ok(new { Username = user.Username });
         }
 
@@ -116,6 +120,8 @@ namespace Jellyfile.Server.Controllers
             var username = user.Username;
             _db.Users.Remove(user);
             await _db.SaveChangesAsync();
+
+            _userFolderService.DeleteFolderForUser(user);
 
             return Ok($"{username} supprimé");
         }

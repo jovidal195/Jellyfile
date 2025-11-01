@@ -10,67 +10,101 @@ namespace Jellyfile.Server.Infrastructure
         public static void EnsureDatabaseReady(MyDbContext db)
         {
             db.Database.EnsureCreated();
+            db.Database.OpenConnection();
 
-            var dbTables = db.GetType().GetProperties()
-                           .Where(p => p.PropertyType.IsGenericType &&
-                                       p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>));
-
-            foreach (var dbTable in dbTables)
+            try
             {
-                var entityType = dbTable.PropertyType.GetGenericArguments()[0];
-                var entity = db.Model.FindEntityType(entityType);
-                if (entity == null) continue;
+                var dbTables = db.GetType().GetProperties()
+                               .Where(p => p.PropertyType.IsGenericType &&
+                                           p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>));
 
-                var tableName = entity.GetTableName();
-
-                // Colonnes existantes
-                var existingColumns = new List<string>();
-                using (var command = db.Database.GetDbConnection().CreateCommand())
+                foreach (var dbTable in dbTables)
                 {
-                    command.CommandText = $"PRAGMA table_info([{tableName}])";
-                    db.Database.OpenConnection();
+                    var entityType = dbTable.PropertyType.GetGenericArguments()[0];
+                    var entity = db.Model.FindEntityType(entityType);
+                    if (entity == null) continue;
 
-                    using (var reader = command.ExecuteReader())
+                    var tableName = entity.GetTableName();
+                    
+                    // Vérifie si la table existe
+                    using (var checkCmd = db.Database.GetDbConnection().CreateCommand())
                     {
-                        while (reader.Read())
+                        checkCmd.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{tableName}'";
+                        var exists = checkCmd.ExecuteScalar() != null;
+
+                        if (!exists)
                         {
-                            existingColumns.Add(reader.GetString(reader.GetOrdinal("name")));
+                            // Table manquante → création automatique
+                            var columns = entityType.GetProperties()
+                                            .Where(p => p.PropertyType.IsPrimitive || p.PropertyType == typeof(string) || p.PropertyType == typeof(DateTime))
+                                            .Select(p => $"{p.Name} {GetSqlType(p.PropertyType)}");
+                            var sql = $"CREATE TABLE [{tableName}] ({string.Join(",", columns)})";
+                            using var createCmd = db.Database.GetDbConnection().CreateCommand();
+                            createCmd.CommandText = sql;
+                            createCmd.ExecuteNonQuery();
                         }
                     }
 
-                    db.Database.CloseConnection();
-                }
-
-                // Parcours des propriétés
-                foreach (var prop in entityType.GetProperties())
-                {
-                    // 1️⃣ Owned entity → créer colonnes aplaties
-                    var ownedAttr = prop.PropertyType.GetCustomAttribute<OwnedAttribute>();
-                    if (ownedAttr != null)
+                    // Colonnes existantes
+                    var existingColumns = new List<string>();
+                    using (var command = db.Database.GetDbConnection().CreateCommand())
                     {
-                        foreach (var subProp in prop.PropertyType.GetProperties())
+                        command.CommandText = $"PRAGMA table_info([{tableName}])";
+                        //db.Database.OpenConnection();
+
+                        using (var reader = command.ExecuteReader())
                         {
-                            var subColumnName = $"{prop.Name}_{subProp.Name}";
-                            if (!existingColumns.Contains(subColumnName))
+                            while (reader.Read())
                             {
-                                AddColumn(db, tableName, subColumnName, subProp.PropertyType);
+                                existingColumns.Add(reader.GetString(reader.GetOrdinal("name")));
                             }
                         }
-                        continue;
+
+                        //db.Database.CloseConnection();
                     }
 
-                    // 2️⃣ Propriété simple → créer colonne
-                    if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(DateTime))
+                    // Parcours des propriétés
+                    foreach (var prop in entityType.GetProperties())
                     {
-                        var columnName = prop.Name;
-                        if (!existingColumns.Contains(columnName))
+                        // 1️⃣ Owned entity → créer colonnes aplaties
+                        var ownedAttr = prop.PropertyType.GetCustomAttribute<OwnedAttribute>();
+                        if (ownedAttr != null)
                         {
-                            AddColumn(db, tableName, columnName, prop.PropertyType);
+                            foreach (var subProp in prop.PropertyType.GetProperties())
+                            {
+                                var subColumnName = $"{prop.Name}_{subProp.Name}";
+                                if (!existingColumns.Contains(subColumnName))
+                                {
+                                    AddColumn(db, tableName, subColumnName, subProp.PropertyType);
+                                }
+                            }
+                            continue;
+                        }
+
+                        // 2️⃣ Propriété simple → créer colonne
+                        if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType.IsEnum || prop.PropertyType == typeof(DateTime) || (Nullable.GetUnderlyingType(prop.PropertyType) == typeof(DateTime)))
+                        {
+                            var columnName = prop.Name;
+                            if (!existingColumns.Contains(columnName))
+                            {
+                                AddColumn(db, tableName, columnName, prop.PropertyType);
+                            }
+                        }
+
+                        foreach (var index in entity.GetIndexes())
+                        {
+                            if (!index.IsUnique) continue;
+                            var indexName = index.GetDatabaseName();
+                            using var idxCmd = db.Database.GetDbConnection().CreateCommand();
+                            idxCmd.CommandText = $"CREATE UNIQUE INDEX IF NOT EXISTS [{indexName}] ON [{tableName}] ({string.Join(",", index.Properties.Select(p => p.Name))})";
+                            idxCmd.ExecuteNonQuery();
                         }
                     }
-
-                    // 3️⃣ Tout le reste → navigation property → ignorer
                 }
+            }
+            finally // 🔹 Ferme la connexion quoi qu’il arrive
+            {
+                db.Database.CloseConnection();
             }
         }
 
@@ -99,6 +133,18 @@ namespace Jellyfile.Server.Infrastructure
             {
                 // ignore si déjà existante
             }
+        }
+
+        private static string GetSqlType(Type type)
+        {
+            if (type == typeof(string)) return "TEXT";
+            if (type == typeof(int)) return "INTEGER";
+            if (type == typeof(long)) return "BIGINT";
+            if (type == typeof(bool)) return "BOOLEAN";
+            if (type == typeof(DateTime) || Nullable.GetUnderlyingType(type) == typeof(DateTime))
+                return "DATETIME";
+            if (type.IsEnum) return "INTEGER";
+            return "TEXT";
         }
     }
 }

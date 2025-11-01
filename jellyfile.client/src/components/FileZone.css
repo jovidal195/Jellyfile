@@ -1,0 +1,31 @@
+.file-zone {
+    
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    width: 92%;
+    height: 92%;
+    align-items: center;
+    display: grid;
+}
+
+.file-zone.drag-active {
+    border-color: #888;
+    background-color: #f2f2f2;
+    border: 2px dashed #ccc;
+}
+
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.file-card {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 6px;
+    background-color: #fafafa;
+}
