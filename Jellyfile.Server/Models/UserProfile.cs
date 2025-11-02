@@ -9,6 +9,7 @@
         public string? LastName { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
+        public int? Avatar { get; set; }
         // autres données personnelles optionnelles
 
         public User User { get; set; } = null!;

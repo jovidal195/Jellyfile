@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 import Modal from "./Modal";
     
-export default function menuProfil() {
+export default function menuProfil({ user }) {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isModalOpen, setModalOpen] = useState(false);
 
@@ -55,6 +55,42 @@ export default function menuProfil() {
         return () => unbind();
     }, []);
 
+    const uploadAvatar = async () => {
+        if (!selectedFile) return;
+
+        try {
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+            formData.append("user", JSON.stringify(user));
+            console.log(user);
+            formData.append("compress", "avatar");
+
+            const res = await fetch("http://localhost:5291/api/files/upload", {
+                method: "POST",
+                body: formData,
+                credentials: "include"
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                console.error(text);
+                toast("error", text || "Impossible de sauvegarder l’avatar !");
+                return;
+            }
+
+            const data = await res.json();
+            toast("success", "Avatar sauvegardé !");
+            setModalOpen(false);
+            setSelectedFile(null);
+
+            // Ici tu peux mettre à jour localement l’avatar si besoin
+            // setUserAvatar(data.Path);
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur lors de l’upload de l’avatar !");
+        }
+    };
+
     return (
         <div className="profile submenus">
 
@@ -95,10 +131,9 @@ export default function menuProfil() {
                 )}
                 <div style={{ marginTop: "10px" }}>
                     <button onClick={() => setModalOpen(false)}>Annuler</button>
-                    <button onClick={() => {
-                        toast("success", "Avatar sauvegardé !");
-                        setModalOpen(false);
-                    }}>Confirmer</button>
+                    <button onClick={uploadAvatar}>
+                        Confirmer
+                    </button>
                 </div>
             </Modal>
         </div>

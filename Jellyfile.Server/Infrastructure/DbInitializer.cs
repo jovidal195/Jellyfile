@@ -66,7 +66,7 @@ namespace Jellyfile.Server.Infrastructure
                     // Parcours des propriétés
                     foreach (var prop in entityType.GetProperties())
                     {
-                        // 1️⃣ Owned entity → créer colonnes aplaties
+                        // Owned entity → créer colonnes aplaties
                         var ownedAttr = prop.PropertyType.GetCustomAttribute<OwnedAttribute>();
                         if (ownedAttr != null)
                         {
@@ -81,13 +81,15 @@ namespace Jellyfile.Server.Infrastructure
                             continue;
                         }
 
-                        // 2️⃣ Propriété simple → créer colonne
-                        if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType.IsEnum || prop.PropertyType == typeof(DateTime) || (Nullable.GetUnderlyingType(prop.PropertyType) == typeof(DateTime)))
+                        // 2Propriété simple → créer colonne
+                        var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+
+                        if (underlyingType.IsPrimitive || underlyingType == typeof(string) || underlyingType.IsEnum || underlyingType == typeof(DateTime))
                         {
                             var columnName = prop.Name;
                             if (!existingColumns.Contains(columnName))
                             {
-                                AddColumn(db, tableName, columnName, prop.PropertyType);
+                                AddColumn(db, tableName, columnName, underlyingType);
                             }
                         }
 

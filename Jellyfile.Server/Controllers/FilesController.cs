@@ -3,6 +3,8 @@ using Jellyfile.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic.FileIO;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -22,18 +24,13 @@ namespace Jellyfile.Server.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFile([FromForm] IFormFile file, [FromForm] string user)
+        public async Task<IActionResult> UploadFile([FromForm] IFormFile file, [FromForm] string user, [FromForm] string? compress)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "Aucun fichier reçu." });
 
             if (string.IsNullOrEmpty(user))
                 return BadRequest(new { message = "Aucun utilisateur envoyé." });
-
-            // Désérialisation de l'objet user JSON envoyé par le frontend
-            /*var userDto = JsonSerializer.Deserialize<UserDto>(user);
-            if (userDto == null)
-                return BadRequest("Format de l'utilisateur invalide.");*/
 
             // =================================================================
             // Vérification de la session et cohérence avec l'utilisateur envoyé
@@ -57,7 +54,9 @@ namespace Jellyfile.Server.Controllers
             if (string.IsNullOrEmpty(sentUsername))
                 return BadRequest(new { message = "Le username est vide." });
 
-            var dbUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == sessionUserId);
+            var dbUser = await _db.Users
+                .Include(u => u.Profile)
+                .FirstOrDefaultAsync(u => u.Id == sessionUserId);
 
             if (dbUser == null)
                 return NotFound("Utilisateur introuvable.");
@@ -67,6 +66,13 @@ namespace Jellyfile.Server.Controllers
 
             if (dbUser.StorageUsedBytes + file.Length > dbUser.StorageQuotaBytes)
                 return BadRequest(new { message = "Quota de stockage dépassé. Impossible de téléverser ce fichier." });
+
+            if (dbUser.Profile == null)
+            {
+                dbUser.Profile = new UserProfile();
+                _db.UserProfiles.Add(dbUser.Profile);
+            }
+
 
             // =================================================================
             // trouve le dossier racine et le créer s'il n'existe pas
@@ -104,9 +110,40 @@ namespace Jellyfile.Server.Controllers
             var fileName = $"{Guid.NewGuid()}_{file.FileName}";
             var fullPath = Path.Combine(userRootPath, dbUser.Username, fileName);
 
-            await using (var stream = new FileStream(fullPath, FileMode.Create))
+            var poids_fichier = file.Length;
+
+            if (!string.IsNullOrEmpty(compress))
             {
-                await file.CopyToAsync(stream);
+                switch (compress.ToLower())
+                {
+                    case "avatar":
+                        // Exemple : réduire la taille, convertir en JPG 150x150
+                        using (var image = SixLabors.ImageSharp.Image.Load(file.OpenReadStream()))
+                        {
+                            image.Mutate(x => x.Resize(150, 150));
+                            await image.SaveAsJpegAsync(fullPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
+                            {
+                                Quality = 80
+                            });
+                        }
+
+                        var fileInfo = new FileInfo(fullPath);
+                        poids_fichier = fileInfo.Length;
+                        break;
+
+                    // Ajouter d'autres cas de compression si besoin
+                    default:
+                        // Pas de compression
+                        await using (var stream = new FileStream(fullPath, FileMode.Create))
+                            await file.CopyToAsync(stream);
+                        break;
+                }
+            }
+            else
+            {
+                // Pas de compression
+                await using (var stream = new FileStream(fullPath, FileMode.Create))
+                    await file.CopyToAsync(stream);
             }
 
             // Création de l’entrée File dans la DB
@@ -114,7 +151,7 @@ namespace Jellyfile.Server.Controllers
             {
                 Name = file.FileName,
                 Path = Path.Combine(dbUser.Username, fileName),
-                SizeBytes = file.Length,
+                SizeBytes = poids_fichier,
                 FileTypeId = fileTypeId,
                 CreatedAt = DateTime.UtcNow,
                 CreatedById = dbUser.Id,
@@ -134,8 +171,14 @@ namespace Jellyfile.Server.Controllers
 
             // Ajoute le FileOwner au DbContext
             _db.FileOwners.Add(owner);
-            dbUser.StorageUsedBytes += file.Length;
+            dbUser.StorageUsedBytes += poids_fichier;
             await _db.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(compress))
+            {
+                dbUser.Profile.Avatar = dbFile.Id;
+                await _db.SaveChangesAsync();
+            }
 
             // =================================================================
             // Validation complète et retour vers le frontend

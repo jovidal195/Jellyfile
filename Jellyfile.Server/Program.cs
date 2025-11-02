@@ -1,5 +1,6 @@
 using Jellyfile.Server.Infrastructure;
 using Jellyfile.Server.Models;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -95,6 +96,18 @@ if (string.IsNullOrEmpty(secret))
     secret = ConfigYamlHelper.GenerateSecret();
 }
 
+// Configurer la limite des fichiers uploadés
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 1073741824; // 1 GB en bytes
+});
+
+// Configurer Kestrel également (sécurisé côté serveur)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 1073741824; // 1 GB
+});
+
 
 var app = builder.Build();
 
@@ -155,6 +168,24 @@ app.UseSession();
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next.Invoke();
+    }
+    catch (BadHttpRequestException ex) when (ex.Message.Contains("Request body too large"))
+    {
+        context.Response.StatusCode = 413; // Payload Too Large
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message = "Le fichier est trop volumineux. Limite actuelle: 1GB."
+        });
+    }
+});
+
 
 app.MapControllers();
 

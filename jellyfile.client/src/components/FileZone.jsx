@@ -1,12 +1,14 @@
 ﻿import { useState, useRef } from "react";
 import { useToast } from "./ToastProvider";
 import './FileZone.css';
+import Modal from "./Modal";
 
-export default function FileZone({ user, onFileSelect }) {
+export default function FileZone({ user }) {
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const inputRef = useRef(null);
     const toast = useToast();
+    const [isModalOpen, setModalOpen] = useState(false);
 
     const handleDrag = (e) => {
         e.preventDefault();
@@ -38,6 +40,7 @@ export default function FileZone({ user, onFileSelect }) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("user", JSON.stringify(user));
+        setModalOpen(true);
 
         try {
             const res = await fetch(`http://localhost:5291/api/files/upload`, {
@@ -50,50 +53,59 @@ export default function FileZone({ user, onFileSelect }) {
 
             if (res.ok) {
                 toast("success", "réponse positive");
-                setUploadedFiles((prev) => [...prev, data]);
-                if (onFileSelect) onFileSelect(data);
+                setModalOpen(false)
             } else {
                 console.error(res);
                 toast("error", data.message);
+                setModalOpen(false)
             }
         } catch (err) {
             console.log(err);
             toast("error", err.message || String(err));
+            setModalOpen(false)
         }
     };
 
 
     return (
-        <div
-            id="fileZone"
-            className={`file-zone ${dragActive ? "drag-active" : ""}`}
-            onClick={handleClick}
-            onDragEnter={handleDrag}
-            onDragOver={handleDrag}
-            onDragLeave={handleDrag}
-            onDrop={handleDrop}
-        >
-            <input
-                type="file"
-                ref={inputRef}
-                style={{ display: "none" }}
-                onChange={handleChange}
-            />
-            {uploadedFiles.length === 0 ? (
-                <p>Glissez un fichier ici ou cliquez pour sélectionner</p>
-            ) : (
-                <div className="file-list">
-                    {uploadedFiles.map((f, idx) => (
-                        <div key={idx} className="file-card">
-                            <p><strong>Nom:</strong> {f.name}</p>
-                            <p><strong>Taille:</strong> {f.size} bytes</p>
-                            <p><strong>Type:</strong> {f.type}</p>
-                            <p><strong>Droits:</strong> {f.permission}</p>
-                            <p><strong>Exp:</strong> {f.expiration ?? "N/A"}</p>
-                        </div>
-                    ))}
+        <div>
+            <div
+                id="fileZone"
+                className={`file-zone ${dragActive ? "drag-active" : ""}`}
+                onClick={handleClick}
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+            >
+                <input
+                    type="file"
+                    ref={inputRef}
+                    style={{ display: "none" }}
+                    onChange={handleChange}
+                />
+                {uploadedFiles.length === 0 ? (
+                    <p>Glissez un fichier ici ou cliquez pour sélectionner</p>
+                ) : (
+                    <div className="file-list">
+                        {uploadedFiles.map((f, idx) => (
+                            <div key={idx} className="file-card">
+                                <p><strong>Nom:</strong> {f.name}</p>
+                                <p><strong>Taille:</strong> {f.size} bytes</p>
+                                <p><strong>Type:</strong> {f.type}</p>
+                                <p><strong>Droits:</strong> {f.permission}</p>
+                                <p><strong>Exp:</strong> {f.expiration ?? "N/A"}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)}>
+                <div className="modal-loading">
+                    <div className="spinner"></div>
+                    <p>Chargement...</p>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 }

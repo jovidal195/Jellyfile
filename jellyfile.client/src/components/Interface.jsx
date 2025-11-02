@@ -56,19 +56,6 @@ export default function Interface() {
 
     }
 
-    const handleFileSelect = (file) => {
-        setSelectedFile(file);
-
-        // cacher fileZone et afficher ton menu upload
-        const fileZone = document.querySelector("#fileZone");
-        if (fileZone) fileZone.style.display = "none";
-
-        const rightBox = document.querySelector(".right-box");
-        rightBox.querySelectorAll(":scope > div").forEach(div => div.style.display = "none");
-
-        // afficher le menu d'upload
-        document.querySelector("#uploadMenu").style.display = "block";
-    };
 
     const closeMenu = () => setMenuOpen(false);
 
@@ -102,8 +89,8 @@ export default function Interface() {
                     Dossiers
                 </div>
                 <div className="right-box">
-                    <FileZone user={user} onFileSelect={handleFileSelect} />
-                    <MenuProfil />
+                    <FileZone user={user} />
+                    <MenuProfil user={user} />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />
                     )}
