@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 import Modal from "./Modal";
     
-export default function menuProfil({ user }) {
+export default function menuProfil({ user, setavatarLink }) {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isModalOpen, setModalOpen] = useState(false);
 
@@ -82,6 +82,7 @@ export default function menuProfil({ user }) {
             toast("success", "Avatar sauvegardé !");
             setModalOpen(false);
             setSelectedFile(null);
+            setavatarLink(`http://localhost:5291/api/files/avatar/${user.username}?t=${Date.now()}`);
 
             // Ici tu peux mettre à jour localement l’avatar si besoin
             // setUserAvatar(data.Path);

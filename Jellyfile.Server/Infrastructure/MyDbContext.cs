@@ -18,6 +18,7 @@ namespace Jellyfile.Server.Infrastructure
         public DbSet<FileType> FileTypes { get; set; }
         public DbSet<FileExtension> FileExtensions { get; set; }
         public DbSet<FileOwner> FileOwners { get; set; }
+        public DbSet<FilePin> FilePins { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

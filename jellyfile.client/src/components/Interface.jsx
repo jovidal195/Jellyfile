@@ -16,6 +16,8 @@ export default function Interface() {
     const [users, setUsers] = useState([]);
     const [user, setUser] = useState(null);
     const [tree, setTree] = useState([]);
+    const [avatarLink, setavatarLink] = useState("");
+
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -31,10 +33,11 @@ export default function Interface() {
             })
             .then(data => {
                 setUser(data);
+                setavatarLink(`http://localhost:5291/api/files/avatar/${data.username}?t=${Date.now()}`);
                 reloadTree();
             })
-            .catch(() => {
-                console.error("erreur");
+            .catch((err) => {
+                console.error(err);
                 setUser(null)
             })
 
@@ -44,6 +47,7 @@ export default function Interface() {
             .then(res => res.json())
             .then(data => setTree(data))
             .catch(err => console.error(err));
+
     }, []);
 
     const toggleMenu = (e) => {
@@ -80,6 +84,8 @@ export default function Interface() {
 
     const closeMenu = () => setMenuOpen(false);
 
+    console.log(user);
+
     return (
         <div className="mainapp-container">
             <header className="top-bar">
@@ -96,7 +102,17 @@ export default function Interface() {
                     </button>
                 </div>
                 <span className="user-btn" onClick={toggleMenu}>
-                    <FontAwesomeIcon icon={faCircleUser} style={{ 'fontSize': '26' }} />
+                    { avatarLink === "" ? (
+                        <FontAwesomeIcon icon={faCircleUser} style={{ fontSize: '26px' }} />
+                        
+                    ) : (
+                            <img
+                                src={avatarLink}
+                                alt="Avatar"
+                                style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
+                                onError={() => setavatarLink("")}
+                            />
+                    )}
                 </span>
                 {menuOpen &&
                     (isMobile ? (
@@ -109,7 +125,7 @@ export default function Interface() {
                 <UserTree user={user} tree={tree}/>
                 <div className="right-box">
                     <FileZone user={user} reloadTree={reloadTree}/>
-                    <MenuProfil user={user} />
+                    <MenuProfil user={user} setavatarLink={setavatarLink} />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />
                     )}

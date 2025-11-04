@@ -110,7 +110,9 @@ namespace Jellyfile.Server.Controllers
             var fileName = $"{Guid.NewGuid()}_{file.FileName}";
             var fullPath = Path.Combine(userRootPath, dbUser.Username, fileName);
 
-            var poids_fichier = file.Length;
+            var poidsFichier = file.Length;
+
+            var permissionsLevel = PermissionLevel.AuthUser;
 
             if (!string.IsNullOrEmpty(compress))
             {
@@ -128,7 +130,8 @@ namespace Jellyfile.Server.Controllers
                         }
 
                         var fileInfo = new FileInfo(fullPath);
-                        poids_fichier = fileInfo.Length;
+                        poidsFichier = fileInfo.Length;
+                        permissionsLevel = PermissionLevel.Public;
                         break;
 
                     // Ajouter d'autres cas de compression si besoin
@@ -151,7 +154,7 @@ namespace Jellyfile.Server.Controllers
             {
                 Name = file.FileName,
                 Path = Path.Combine(dbUser.Username, fileName),
-                SizeBytes = poids_fichier,
+                SizeBytes = poidsFichier,
                 FileTypeId = fileTypeId,
                 CreatedAt = DateTime.UtcNow,
                 CreatedById = dbUser.Id,
@@ -166,12 +169,12 @@ namespace Jellyfile.Server.Controllers
             {
                 FileId = dbFile.Id,
                 UserId = dbUser.Id,
-                Permission = PermissionLevel.AuthUser
+                Permission = permissionsLevel
             };
 
             // Ajoute le FileOwner au DbContext
             _db.FileOwners.Add(owner);
-            dbUser.StorageUsedBytes += poids_fichier;
+            dbUser.StorageUsedBytes += poidsFichier;
             await _db.SaveChangesAsync();
 
             if (!string.IsNullOrEmpty(compress))
@@ -227,9 +230,8 @@ namespace Jellyfile.Server.Controllers
                         .Where(f => f.CreatedById == u.Id)
                         .Select(f => new
                         {
-                            //f.Id,
                             f.Name,
-                            f.Path,
+                            f.Hash,
                             f.SizeBytes,
                             f.CreatedAt,
                             FileTypeName = f.FileType.Name
@@ -266,8 +268,8 @@ namespace Jellyfile.Server.Controllers
                         Name = "Mes fichiers",
                         Files = myFiles
                         .Select(f => new {
-                            //f.Id,
                             f.Name,
+                            f.Hash,
                             f.Path,
                             f.SizeBytes,
                             f.CreatedAt,
@@ -283,8 +285,8 @@ namespace Jellyfile.Server.Controllers
                         Name = "Shared",
                         Files = sharedFiles
                         .Select(f => new {
-                            //f.Id,
                             f.Name,
+                            f.Hash,
                             f.Path,
                             f.SizeBytes,
                             f.CreatedAt,
@@ -297,6 +299,115 @@ namespace Jellyfile.Server.Controllers
                 return Ok(tree);
             }
         }
+
+        [HttpGet("{hash}/{fileName}")]
+        public async Task<IActionResult> GetFile(string hash, string fileName, [FromQuery] string? pin)
+        {
+            var dbFile = await _db.Files
+                .Include(f => f.Owners)
+                .ThenInclude(fo => fo.User)
+                .Include(f => f.Pins)
+                .FirstOrDefaultAsync(f => f.Hash == hash && f.Name == fileName);
+
+            if (dbFile == null)
+                return NotFound(new { message = "Fichier introuvable" });
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+
+            // --- Vérification du créateur ---
+            bool isCreator = userId != null && dbFile.CreatedById == userId.Value;
+
+            // --- Vérification des partages AuthUser ---
+            bool hasAuthAccess = userId != null && dbFile.Owners
+                .Any(fo => fo.UserId == userId.Value && fo.Permission == PermissionLevel.AuthUser &&
+                           (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+
+            // --- Vérification du public ---
+            bool isPublic = dbFile.Owners
+                .Any(fo => fo.Permission == PermissionLevel.Public &&
+                           (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+
+            // --- Vérification du PIN ---
+            FilePin? matchingPin = null;
+            if (!string.IsNullOrEmpty(pin))
+            {
+                matchingPin = dbFile.Pins
+                    .FirstOrDefault(fp => fp.Pin == pin && (fp.ExpiresAt == null || fp.ExpiresAt > DateTime.UtcNow));
+            }
+
+            // --- Logique finale d'accès ---
+            if (!isCreator && !hasAuthAccess && !isPublic && matchingPin == null)
+            {
+                if (userId == null && dbFile.Owners.Any(fo => fo.Permission != PermissionLevel.Public))
+                    return Unauthorized(new { message = "Pas de session" });
+
+                return Forbid();
+            }
+
+            // --- Construire le chemin du fichier ---
+            var projectRoot = UserFolderService.FindProjectRoot();
+            var fullPath = Path.Combine(projectRoot, "users", dbFile.Path);
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound(new { message = "Fichier introuvable sur le serveur" });
+
+            // --- Déterminer le content-type ---
+            var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(fullPath, out var contentType))
+                contentType = "application/octet-stream";
+
+            return PhysicalFile(fullPath, contentType, dbFile.Name);
+        }
+
+
+        [HttpGet("avatar/{username}")]
+        public async Task<IActionResult> GetAvatar(string username)
+        {
+            // Trouve l'utilisateur avec son profil
+            var user = await _db.Users
+                .Include(u => u.Profile)
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user == null || user.Profile == null)
+                return NotFound();
+
+            // Avatar FileId dans le profil
+            var avatarFileId = user.Profile.Avatar;
+            if (avatarFileId == null)
+                return NotFound();
+
+            // Récupère le fichier
+            var avatarFile = await _db.Files
+                .Include(f => f.Owners)
+                .FirstOrDefaultAsync(f => f.Id == avatarFileId.Value);
+
+            if (avatarFile == null)
+                return NotFound();
+
+            // Vérifie qu'il y a au moins un owner public valide
+            bool isPublic = avatarFile.Owners.Any(fo =>
+                fo.Permission == PermissionLevel.Public &&
+                (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow)
+            );
+
+            if (!isPublic)
+                return NotFound();
+
+            // Chemin complet
+            var projectRoot = UserFolderService.FindProjectRoot();
+            var fullPath = Path.Combine(projectRoot, "users", avatarFile.Path);
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound();
+
+            // Content type
+            var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(fullPath, out var contentType))
+                contentType = "application/octet-stream";
+
+            return PhysicalFile(fullPath, contentType);
+        }
+
 
 
     }

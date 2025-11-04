@@ -54,9 +54,9 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("logout")]
-    public IActionResult Logout()
+    public async Task<IActionResult> LogoutAsync()
     {
-        HttpContext.SignOutAsync("JellyCookie");
+        await HttpContext.SignOutAsync("JellyCookie");
         HttpContext.Session.Clear(); // supprime toutes les données de session
         return Ok(new { message = "Logged out" });
     }
