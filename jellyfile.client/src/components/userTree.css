@@ -1,0 +1,11 @@
+.clickable-tree {
+    cursor: pointer;
+}
+
+.folder-tree {
+    fontWeight: bold;
+}
+
+.file-tree, .file-item {
+    padding-left: 10px;
+}

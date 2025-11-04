@@ -166,7 +166,7 @@ namespace Jellyfile.Server.Controllers
             {
                 FileId = dbFile.Id,
                 UserId = dbUser.Id,
-                Permission = PermissionLevel.Admin // par défaut le créateur est admin
+                Permission = PermissionLevel.AuthUser
             };
 
             // Ajoute le FileOwner au DbContext
@@ -195,5 +195,109 @@ namespace Jellyfile.Server.Controllers
             });
 
         }
+
+        [HttpGet("tree")]
+        public async Task<IActionResult> GetFileTree()
+        {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var user = await _db.Users.FindAsync(userId.Value);
+            if (user == null)
+                return Unauthorized(new { message = "Utilisateur introuvable" });
+
+            if (user.Role == "Admin")
+            {
+                // Admin : un dossier par utilisateur
+                var users = await _db.Users
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var files = await _db.Files
+                    .Include(f => f.CreatedBy)
+                    .Include(f => f.FileType)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var tree = users.Select(u => new
+                {
+                    Name = u.Username,
+                    Files = files
+                        .Where(f => f.CreatedById == u.Id)
+                        .Select(f => new
+                        {
+                            //f.Id,
+                            f.Name,
+                            f.Path,
+                            f.SizeBytes,
+                            f.CreatedAt,
+                            FileTypeName = f.FileType.Name
+                        })
+                        .ToList()
+                }).ToList();
+
+                return Ok(tree);
+            }
+            else
+            {
+                var myFiles = await _db.Files
+                    .Where(f => f.CreatedById == userId.Value)
+                    .Include(f => f.FileType)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                // Fichiers partagés avec lui
+                var sharedFiles = await _db.FileOwners
+                    .Where(fo => fo.UserId == userId.Value)
+                    .Include(fo => fo.File)
+                        .ThenInclude(f => f.FileType)   // <-- inclut le FileType
+                    .Include(fo => fo.File)
+                        .ThenInclude(f => f.CreatedBy) // si tu veux le Owner
+                    .AsNoTracking()
+                    .Select(fo => fo.File)
+                    .Where(f => f.CreatedById != userId.Value)
+                    .ToListAsync();
+
+                var tree = new List<object>
+                {
+                    new
+                    {
+                        Name = "Mes fichiers",
+                        Files = myFiles
+                        .Select(f => new {
+                            //f.Id,
+                            f.Name,
+                            f.Path,
+                            f.SizeBytes,
+                            f.CreatedAt,
+                            FileTypeName = f.FileType.Name
+                        }).ToList()
+                    },
+                };
+
+                if (sharedFiles.Any())
+                {
+                    tree.Add(new
+                    {
+                        Name = "Shared",
+                        Files = sharedFiles
+                        .Select(f => new {
+                            //f.Id,
+                            f.Name,
+                            f.Path,
+                            f.SizeBytes,
+                            f.CreatedAt,
+                            FileTypeName = f.FileType.Name,
+                            Owner = f.CreatedBy.Username
+                        }).ToList()
+                    });
+                }
+
+                return Ok(tree);
+            }
+        }
+
+
     }
 }

@@ -3,7 +3,7 @@ import { useToast } from "./ToastProvider";
 import './FileZone.css';
 import Modal from "./Modal";
 
-export default function FileZone({ user }) {
+export default function FileZone({ user , reloadTree }) {
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const inputRef = useRef(null);
@@ -54,6 +54,7 @@ export default function FileZone({ user }) {
             if (res.ok) {
                 toast("success", "réponse positive");
                 setModalOpen(false)
+                reloadTree();
             } else {
                 console.error(res);
                 toast("error", data.message);
@@ -66,9 +67,8 @@ export default function FileZone({ user }) {
         }
     };
 
-
     return (
-        <div>
+        <div className="home submenus">
             <div
                 id="fileZone"
                 className={`file-zone ${dragActive ? "drag-active" : ""}`}

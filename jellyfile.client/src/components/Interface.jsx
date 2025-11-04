@@ -4,6 +4,7 @@ import UserModal from "./UserModal";
 import MenuProfil from './menuProfil';
 import MenuUsers from './menuUsers';
 import FileZone from './FileZone';
+import UserTree from './userTree';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -14,7 +15,7 @@ export default function Interface() {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [users, setUsers] = useState([]);
     const [user, setUser] = useState(null);
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [tree, setTree] = useState([]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -30,11 +31,19 @@ export default function Interface() {
             })
             .then(data => {
                 setUser(data);
+                reloadTree();
             })
             .catch(() => {
                 console.error("erreur");
                 setUser(null)
             })
+
+        fetch("http://localhost:5291/api/files/tree", {
+            credentials: "include"
+        })
+            .then(res => res.json())
+            .then(data => setTree(data))
+            .catch(err => console.error(err));
     }, []);
 
     const toggleMenu = (e) => {
@@ -51,11 +60,23 @@ export default function Interface() {
             div.style.display = "none";
         });
         leftBox.style.display = "initial";
-        const fileZone = document.querySelector("#fileZone");
-        fileZone.style.display = "initial";
+        const fileZone = document.querySelector(".home");
+        fileZone.style.display = "grid";
 
     }
 
+    const reloadTree = async () => {
+        if (!user) return;
+        try {
+            const res = await fetch("http://localhost:5291/api/files/tree", { credentials: "include" });
+            if (res.ok) {
+                const data = await res.json();
+                setTree(data);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const closeMenu = () => setMenuOpen(false);
 
@@ -85,11 +106,9 @@ export default function Interface() {
                     ))}
             </header>
             <div className="content">
-                <div className="left-box">
-                    Dossiers
-                </div>
+                <UserTree user={user} tree={tree}/>
                 <div className="right-box">
-                    <FileZone user={user} />
+                    <FileZone user={user} reloadTree={reloadTree}/>
                     <MenuProfil user={user} />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />

@@ -4,9 +4,9 @@ namespace Jellyfile.Server.Models
 {
     public enum PermissionLevel
     {
-        Read = 0,
-        Write = 1,
-        Admin = 2
+        Public = 0,
+        Pin = 1,
+        AuthUser = 2
     }
 
     public class FileOwner
@@ -18,7 +18,7 @@ namespace Jellyfile.Server.Models
         public User User { get; set; }
 
         // Droits
-        public PermissionLevel Permission { get; set; } = PermissionLevel.Read;
+        public PermissionLevel Permission { get; set; } = PermissionLevel.Public;
         public DateTime? PermissionExpiresAt { get; set; }
 
         // PIN
