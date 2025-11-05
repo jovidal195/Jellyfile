@@ -68,7 +68,7 @@ export default function FileZone({ user , reloadTree }) {
     };
 
     return (
-        <div className="home submenus">
+        <div className="home">
             <div
                 id="fileZone"
                 className={`file-zone ${dragActive ? "drag-active" : ""}`}

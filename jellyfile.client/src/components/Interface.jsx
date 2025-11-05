@@ -84,8 +84,6 @@ export default function Interface() {
 
     const closeMenu = () => setMenuOpen(false);
 
-    console.log(user);
-
     return (
         <div className="mainapp-container">
             <header className="top-bar">
@@ -109,7 +107,7 @@ export default function Interface() {
                             <img
                                 src={avatarLink}
                                 alt="Avatar"
-                                style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
+                                className="avatar-menu"
                                 onError={() => setavatarLink("")}
                             />
                     )}
