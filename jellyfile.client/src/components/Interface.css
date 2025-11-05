@@ -195,7 +195,8 @@
     position:relative;
     padding: 30px;
     flex-shrink: 0;
-    width: 95px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     overflow: hidden;
     background-color: #eee;

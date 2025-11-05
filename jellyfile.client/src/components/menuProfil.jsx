@@ -5,8 +5,9 @@ import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 import Modal from "./Modal";
+import AvatarCropModal from "./AvatarCropModal";
     
-export default function menuProfil({ user, setavatarLink }) {
+export default function menuProfil({ user, setavatarLink, avatarLink }) {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isModalOpen, setModalOpen] = useState(false);
 
@@ -55,12 +56,12 @@ export default function menuProfil({ user, setavatarLink }) {
         return () => unbind();
     }, []);
 
-    const uploadAvatar = async () => {
+    const uploadAvatar = async (croppedBlob) => {
         if (!selectedFile) return;
 
         try {
             const formData = new FormData();
-            formData.append("file", selectedFile);
+            formData.append("file", croppedBlob, selectedFile.name);
             formData.append("user", JSON.stringify(user));
             console.log(user);
             formData.append("compress", "avatar");
@@ -98,10 +99,15 @@ export default function menuProfil({ user, setavatarLink }) {
             {/* IMAGE + OVERLAY */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <div id="userImg" onClick={handleClick} >
-                    <FontAwesomeIcon icon={faUser} size="5x" />
-                    <div className="avatar-overlay">
-                        <FontAwesomeIcon icon={faPencilAlt} />
-                    </div>
+                    {avatarLink != "" ? (
+                        <img
+                            src={avatarLink}
+                            alt="Avatar"
+                            onError={() => setavatarLink("")}
+                        />
+                    ) : (
+                        <FontAwesomeIcon icon={faUser} size="5x" />
+                    )}
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -121,22 +127,19 @@ export default function menuProfil({ user, setavatarLink }) {
             </div>
 
             {/* MODAL */}
-            <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)}>
-                <h3>Aperçu de l’image</h3>
-                {selectedFile && (
-                    <img
-                        src={URL.createObjectURL(selectedFile)}
-                        alt="Aperçu"
-                        style={{ maxWidth: "200px", borderRadius: "8px" }}
+            {isModalOpen && selectedFile && (
+                <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)}>
+                    <h3>Recadrer l’image</h3>
+                    <AvatarCropModal
+                        file={selectedFile}
+                        onConfirm={async (croppedBlob) => {
+                            const croppedFile = new File([croppedBlob], selectedFile.name, { type: selectedFile.type });
+                            await uploadAvatar(croppedFile);
+                        }}
+                        onCancel={() => setModalOpen(false)}
                     />
-                )}
-                <div style={{ marginTop: "10px" }}>
-                    <button onClick={() => setModalOpen(false)}>Annuler</button>
-                    <button onClick={uploadAvatar}>
-                        Confirmer
-                    </button>
-                </div>
-            </Modal>
+                </Modal>
+            )}
         </div>
     );
 }

@@ -125,7 +125,7 @@ export default function Interface() {
                 <UserTree user={user} tree={tree}/>
                 <div className="right-box">
                     <FileZone user={user} reloadTree={reloadTree}/>
-                    <MenuProfil user={user} setavatarLink={setavatarLink} />
+                    <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />
                     )}

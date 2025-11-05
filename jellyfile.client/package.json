@@ -16,6 +16,7 @@
     "react-dom": "^19.1.1",
     "react-data-table-component": "^7.5.0",
     "react-router-dom": "^6.17.0",
+    "react-easy-crop": "^5.5.3",
     "react-select": "^5.10.2"
   },
   "devDependencies": {
