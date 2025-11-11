@@ -4,6 +4,7 @@ import UserModal from "./UserModal";
 import MenuProfil from './menuProfil';
 import MenuUsers from './menuUsers';
 import FileZone from './FileZone';
+import FileViewer from './FileViewer';
 import UserTree from './userTree';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -17,6 +18,7 @@ export default function Interface() {
     const [user, setUser] = useState(null);
     const [tree, setTree] = useState([]);
     const [avatarLink, setavatarLink] = useState("");
+    const [file, setFile] = useState({});
 
 
     useEffect(() => {
@@ -120,10 +122,11 @@ export default function Interface() {
                     ))}
             </header>
             <div className="content">
-                <UserTree user={user} tree={tree}/>
+                <UserTree user={user} tree={tree} setFile={setFile} />
                 <div className="right-box">
+                    <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} />
                     <FileZone user={user} reloadTree={reloadTree}/>
-                    <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} />
+                    <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree}/>
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />
                     )}

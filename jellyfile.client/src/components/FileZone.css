@@ -1,11 +1,10 @@
 .file-zone {
-    
     border-radius: 8px;
     padding: 40px;
     text-align: center;
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
-    width: 92%;
+    width: calc(100% - 60px);
     height: 92%;
     align-items: center;
     display: grid;

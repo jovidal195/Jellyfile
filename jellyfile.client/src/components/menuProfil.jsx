@@ -7,7 +7,7 @@ import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 import Modal from "./Modal";
 import AvatarCropModal from "./AvatarCropModal";
     
-export default function menuProfil({ user, setavatarLink, avatarLink }) {
+export default function menuProfil({ user, setavatarLink, avatarLink, reloadTree }) {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isModalOpen, setModalOpen] = useState(false);
 
@@ -84,6 +84,7 @@ export default function menuProfil({ user, setavatarLink, avatarLink }) {
             setModalOpen(false);
             setSelectedFile(null);
             setavatarLink(`http://localhost:5291/api/files/avatar/${user.username}?t=${Date.now()}`);
+            reloadTree();
 
             // Ici tu peux mettre à jour localement l’avatar si besoin
             // setUserAvatar(data.Path);

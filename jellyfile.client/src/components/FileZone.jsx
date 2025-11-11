@@ -52,7 +52,7 @@ export default function FileZone({ user , reloadTree }) {
             const data = await res.json();
 
             if (res.ok) {
-                toast("success", "réponse positive");
+                toast("success", "Fichier téléversé");
                 setModalOpen(false)
                 reloadTree();
             } else {

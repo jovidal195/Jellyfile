@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt } from '@fortawesome/free-solid-svg-icons';
 import './userTree.css';
 
-function userTree({ user, tree }) {
+function userTree({ user, tree, setFile }) {
     const [openFolders, setOpenFolders] = useState({}); // key: folderKey, value: boolean
 
     const fileTypeIcons = {
@@ -37,12 +37,24 @@ function userTree({ user, tree }) {
             const uniqueKey = `${parentKey}-${f.name}-${idx}`;
 
             return (
-                <div key={uniqueKey} className="file-item" style={{ paddingLeft: "10px" }}>
+                <div key={uniqueKey} className="file-item" style={{ paddingLeft: "10px" }} onClick={() => displayFilePage(f)    }>
                     <FontAwesomeIcon icon={icon} /> {displayName}
                 </div>
             );
         });
     };
+
+    const displayFilePage = (f) => {
+        const rightBox = document.querySelector(".right-box");
+        rightBox.querySelectorAll(":scope > div").forEach(div => {
+            div.style.display = "none";
+        });
+        const fileViewer = document.querySelector(".file-viewer");
+        fileViewer.style.display = "initial";
+
+        setFile(f);
+        console.log(f);
+    }
 
     const renderFolder = (folder, index) => {
         const folderKey = `${folder.name}-${index}`;

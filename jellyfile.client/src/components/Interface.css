@@ -42,6 +42,7 @@
     align-items: center;
     color: var(--interface-rightbox-text);
     font-size: 1.2em;
+    height: calc( 100vh - 60px );
 }
 
 .search-container {
@@ -301,4 +302,16 @@
     .btn-utilisateur-container {
         display: grid;
     }
+}
+
+/* --- FILE-VIEWER--- */
+.file-viewer {
+    height: 100%;
+    width: 100%;
+}
+
+.file-viewer #arrow {
+    padding: 17px 10px;
+    cursor: pointer;
+    font-size: 35px;
 }

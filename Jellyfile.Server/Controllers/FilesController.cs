@@ -314,6 +314,15 @@ namespace Jellyfile.Server.Controllers
 
             var userId = HttpContext.Session.GetInt32("UserId");
 
+            User? currentUser = null;
+
+            if (userId != null)
+            {
+                currentUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+            }
+
+            bool isAdmin = currentUser?.Role == "Admin";
+
             // --- Vérification du créateur ---
             bool isCreator = userId != null && dbFile.CreatedById == userId.Value;
 
@@ -336,7 +345,7 @@ namespace Jellyfile.Server.Controllers
             }
 
             // --- Logique finale d'accès ---
-            if (!isCreator && !hasAuthAccess && !isPublic && matchingPin == null)
+            if (!isCreator && !hasAuthAccess && !isPublic && matchingPin == null && !isAdmin)
             {
                 if (userId == null && dbFile.Owners.Any(fo => fo.Permission != PermissionLevel.Public))
                     return Unauthorized(new { message = "Pas de session" });
