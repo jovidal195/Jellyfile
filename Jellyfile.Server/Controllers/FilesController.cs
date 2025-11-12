@@ -107,7 +107,8 @@ namespace Jellyfile.Server.Controllers
                 hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
             }
 
-            var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var fileGuid = Guid.NewGuid();
+            var fileName = $"{fileGuid}_{file.FileName}";
             var fullPath = Path.Combine(userRootPath, dbUser.Username, fileName);
 
             var poidsFichier = file.Length;
@@ -159,7 +160,8 @@ namespace Jellyfile.Server.Controllers
                 CreatedAt = DateTime.UtcNow,
                 CreatedById = dbUser.Id,
                 StorageNode = "local",
-                Hash = hash
+                Hash = hash,
+                Uuid = fileGuid.ToString()
             };
 
             _db.Files.Add(dbFile);
@@ -194,7 +196,8 @@ namespace Jellyfile.Server.Controllers
                 dbFile.SizeBytes,
                 Type = fileTypeId,
                 Owner = dbUser.Username,
-                dbFile.CreatedAt
+                dbFile.CreatedAt,
+                dbFile.Uuid
             });
 
         }
@@ -232,6 +235,7 @@ namespace Jellyfile.Server.Controllers
                         {
                             f.Name,
                             f.Hash,
+                            f.Uuid,
                             f.SizeBytes,
                             f.CreatedAt,
                             FileTypeName = f.FileType.Name
@@ -270,6 +274,7 @@ namespace Jellyfile.Server.Controllers
                         .Select(f => new {
                             f.Name,
                             f.Hash,
+                            f.Uuid,
                             f.Path,
                             f.SizeBytes,
                             f.CreatedAt,
@@ -287,6 +292,7 @@ namespace Jellyfile.Server.Controllers
                         .Select(f => new {
                             f.Name,
                             f.Hash,
+                            f.Uuid,
                             f.Path,
                             f.SizeBytes,
                             f.CreatedAt,
@@ -300,17 +306,23 @@ namespace Jellyfile.Server.Controllers
             }
         }
 
-        [HttpGet("{hash}/{fileName}")]
-        public async Task<IActionResult> GetFile(string hash, string fileName, [FromQuery] string? pin)
+        [HttpGet("{uuid}/{fileName}")]
+        [HttpHead("{uuid}/{fileName}")]
+        public async Task<IActionResult> GetFile(string uuid, string fileName, [FromQuery] string? pin)
         {
             var dbFile = await _db.Files
                 .Include(f => f.Owners)
                 .ThenInclude(fo => fo.User)
                 .Include(f => f.Pins)
-                .FirstOrDefaultAsync(f => f.Hash == hash && f.Name == fileName);
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
 
             if (dbFile == null)
                 return NotFound(new { message = "Fichier introuvable" });
+
+
+            // Vérifier que le Path contient le bon UUID
+            if (!dbFile.Path.Contains(uuid))
+                return NotFound(new { message = "Fichier introuvable (UUID mismatch)" });
 
             var userId = HttpContext.Session.GetInt32("UserId");
 

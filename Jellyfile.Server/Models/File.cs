@@ -11,6 +11,7 @@ namespace Jellyfile.Server.Models
         public string Path { get; set; } // chemin relatif dans le dossier utilisateur
         public long SizeBytes { get; set; } // taille
         public string Hash { get; set; } // intégrité / déduplication
+        public string? Uuid { get; set; }
         public DateTime CreatedAt { get; set; }
         public int CreatedById { get; set; }
         public User CreatedBy { get; set; }

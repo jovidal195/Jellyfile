@@ -35,7 +35,7 @@ function FileViewer({ file, return2main }) {
                 {file.fileTypeName === "Image" ? (
                     <img
                         key={file.hash}
-                        src={`http://localhost:5291/api/files/${file.hash}/${file.name}?t=${Date.now()}`}
+                        src={`http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
                         alt={file.name}
                         style={{ maxWidth: "80%", maxHeight: "80vh", objectFit: "contain", overflow: "hidden" }}
                     />
@@ -50,7 +50,7 @@ function FileViewer({ file, return2main }) {
                         }}
                     >
                         <source
-                            src={`http://localhost:5291/api/files/${file.hash}/${file.name}?t=${Date.now()}`}
+                                src={`http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
                             type="video/mp4"
                         />
                         Ton navigateur ne supporte pas la lecture vidéo.
@@ -62,13 +62,13 @@ function FileViewer({ file, return2main }) {
                         style={{ width: "80%" }}
                     >
                         <source
-                            src={`http://localhost:5291/api/files/${file.hash}/${file.name}?t=${Date.now()}`}
+                                    src={`http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
                             type="audio/mpeg"
                         />
                         Ton navigateur ne supporte pas la lecture audio.
                     </audio>
                 ) : file.fileTypeName === "Document" && file.name.endsWith(".pdf") ? (
-                    <PDFFlipbook fileUrl={`http://localhost:5291/api/files/${file.hash}/${file.name}?t=${Date.now()}`} />
+                         <PDFFlipbook fileUrl={`http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`} />
                 ) : file.fileTypeName === "Fonts" ? (
                     <FontPreview file={file}/>
                 ) : (

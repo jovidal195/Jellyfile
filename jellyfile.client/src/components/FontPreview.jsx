@@ -26,7 +26,14 @@ export default function FontPreview({
             return dpr;
         }
 
-        const url = `http://localhost:5291/api/files/${file.hash}/${file.name}?t=${Date.now()}`;
+        const parentWidth = canvas.parentElement?.clientWidth || window.innerWidth;
+        const clientWidth = parentWidth * 0.8;
+        const clientHeight = 160; // fixed visual height; you can adapt
+        const dpr = resizeCanvas(clientWidth, clientHeight);
+        const ctx = canvas.getContext("2d");
+        ctx.scale(dpr, dpr); // scale drawing to DPR
+
+        const url = `http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`;
 
         // Fetch the font with credentials (session)
         fetch(url, { credentials: "include" })
@@ -42,12 +49,6 @@ export default function FontPreview({
 
                 const phrase = `Vous prévisualisez le font ${fontFullName}`;
 
-                const parentWidth = canvas.parentElement?.clientWidth || window.innerWidth;
-                const clientWidth = parentWidth * 0.8;
-                const clientHeight = 160; // fixed visual height; you can adapt
-                const dpr = resizeCanvas(clientWidth, clientHeight);
-                const ctx = canvas.getContext("2d");
-                ctx.scale(dpr, dpr); // scale drawing to DPR
 
                 // utility: measure text width at a specific fontSize using opentype
                 const measureWidth = (text, fSize) => {

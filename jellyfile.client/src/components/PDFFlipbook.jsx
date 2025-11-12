@@ -2,11 +2,13 @@
 import HTMLFlipBook from "react-pageflip";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min?url";
+import { useToast } from "./ToastProvider";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export default function PDFFlipbook({ fileUrl }) {
     const [pages, setPages] = useState([]);
+    const toast = useToast();
     const flipBookRef = useRef(null);
 
     const [dimensions, setDimensions] = useState({
@@ -16,22 +18,52 @@ export default function PDFFlipbook({ fileUrl }) {
 
     useEffect(() => {
         const loadPdf = async () => {
-            const pdf = await pdfjsLib.getDocument({ url: fileUrl, withCredentials: true }).promise;
-            const renderedPages = [];
 
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 2 });
-                const canvas = document.createElement("canvas");
-                const context = canvas.getContext("2d");
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
+            console.log(fileUrl);
 
-                await page.render({ canvasContext: context, viewport }).promise;
-                renderedPages.push(canvas.toDataURL());
+            if (!fileUrl) {
+                toast("error", "Aucune fichier reçu")
+                setPages([]);
+                return;
+            }          
+
+            if (fileUrl.includes("api/files/null")) {
+                toast("error", "Fichier n'a pas de uuid")
+                setPages([]);
+                return;
             }
 
-            setPages(renderedPages);
+            try {
+                const response = await fetch(fileUrl, { method: 'HEAD', credentials: "include" });
+                if (!response.ok) {
+                    toast("error", "Fichier introuvable sur le serveur");
+                    setPages([]);
+                    console.log(fileUrl);
+                    console.log(response);
+                    return;
+                }
+
+                const pdf = await pdfjsLib.getDocument({ url: fileUrl, withCredentials: true }).promise;
+                const renderedPages = [];
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 2 });
+                    const canvas = document.createElement("canvas");
+                    const context = canvas.getContext("2d");
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    await page.render({ canvasContext: context, viewport }).promise;
+                    renderedPages.push(canvas.toDataURL());
+                }
+
+                setPages(renderedPages);
+            } catch (err) {
+                toast("error", "Impossible de charger le PDF")
+                console.error("Impossible de charger le PDF :", err);
+                setPages(null); // ou [] selon le fallback souhaité
+            }
         };
 
         loadPdf();
