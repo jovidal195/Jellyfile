@@ -95,6 +95,11 @@
         opacity: 0.8;
     }
 
+.home {
+    width: calc(100% - 55px);
+    height: 100%;
+}
+
 /* --- MENU CONTEXTUEL (Desktop) --- */
 .user-menu {
     position: absolute;
