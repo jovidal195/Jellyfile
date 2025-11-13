@@ -43,6 +43,7 @@
     color: var(--interface-rightbox-text);
     font-size: 1.2em;
     height: calc( 100vh - 60px );
+    overflow-y: auto;
 }
 
 .search-container {
