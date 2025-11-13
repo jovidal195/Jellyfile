@@ -429,6 +429,85 @@ namespace Jellyfile.Server.Controllers
             return PhysicalFile(fullPath, contentType);
         }
 
+        [HttpDelete("{uuid}/{fileName}")]
+        public async Task<IActionResult> DeleteFile(string uuid, string fileName, [FromQuery] string? pin)
+        {
+            var dbFile = await _db.Files
+                .Include(f => f.Owners)
+                .Include(f => f.Pins)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (dbFile == null)
+                return NotFound(new { message = "Fichier introuvable" });
+
+            // Vérifier que le Path contient le bon UUID
+            if (!dbFile.Path.Contains(uuid))
+                return NotFound(new { message = "Fichier introuvable (UUID mismatch)" });
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+            User? currentUser = null;
+            if (userId != null)
+                currentUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+
+            bool isAdmin = currentUser?.Role == "Admin";
+            bool isCreator = userId != null && dbFile.CreatedById == userId.Value;
+            bool hasAuthAccess = userId != null && dbFile.Owners
+                .Any(fo => fo.UserId == userId.Value && fo.Permission == PermissionLevel.AuthUser &&
+                           (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+            FilePin? matchingPin = null;
+            if (!string.IsNullOrEmpty(pin))
+            {
+                matchingPin = dbFile.Pins
+                    .FirstOrDefault(fp => fp.Pin == pin && (fp.ExpiresAt == null || fp.ExpiresAt > DateTime.UtcNow));
+            }
+
+            // Vérification finale d’accès
+            if (!isCreator && !hasAuthAccess && matchingPin == null && !isAdmin)
+            {
+                if (userId == null && dbFile.Owners.Any(fo => fo.Permission != PermissionLevel.Public))
+                    return Unauthorized(new { message = "Pas de session" });
+
+                return Forbid();
+            }
+
+            // --- Supprimer le fichier physique ---
+            var projectRoot = UserFolderService.FindProjectRoot();
+            var fullPath = Path.Combine(projectRoot, "users", dbFile.Path);
+
+            if (System.IO.File.Exists(fullPath))
+            {
+                try
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { message = "Erreur lors de la suppression du fichier sur le serveur", detail = ex.Message });
+                }
+            }
+
+            var profilesWithAvatar = await _db.UserProfiles
+            .Where(p => p.Avatar == dbFile.Id)
+            .ToListAsync();
+
+            foreach (var profile in profilesWithAvatar)
+            {
+                profile.Avatar = null;  // supprime la référence
+            }
+
+            // --- Supprimer les dépendances ---
+            if (dbFile.Owners.Any())
+                _db.FileOwners.RemoveRange(dbFile.Owners);
+
+            if (dbFile.Pins.Any())
+                _db.FilePins.RemoveRange(dbFile.Pins);
+
+            // --- Supprimer le fichier de la DB ---
+            _db.Files.Remove(dbFile);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Fichier supprimé avec succès" });
+        }
 
 
     }

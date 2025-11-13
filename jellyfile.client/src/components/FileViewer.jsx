@@ -1,8 +1,10 @@
 ﻿import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt } from '@fortawesome/free-solid-svg-icons';
+import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload } from '@fortawesome/free-solid-svg-icons';
 import PDFFlipbook from './PDFFlipbook';
 import FontPreview from './FontPreview';
-function FileViewer({ file, return2main }) {
+import { useToast } from "./ToastProvider";
+function FileViewer({ file, reloadTree, return2main }) {
+    const toast = useToast();
 
     const fileTypeIcons = {
         "Autre": faFile,
@@ -18,6 +20,34 @@ function FileViewer({ file, return2main }) {
 
     const icon = fileTypeIcons[file.fileTypeName] || faFile;
 
+    const deleteFile = async () => {
+        try {
+            // Appel vers ton API pour supprimer le fichier
+            const response = await fetch(`/api/files/${file.uuid}/${file.name}`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                // si tu passes un pin pour accès, tu peux l'ajouter comme query param
+            });
+
+            if (response.ok) {
+                toast("success", "Fichier supprimé");
+                return2main();  // retourne à la vue principale
+                reloadTree();   // recharge l'arborescence
+            } else if (response.status === 403) {
+                toast("error", "Accès refusé");
+            } else if (response.status === 401) {
+                toast("error", "Session expirée");
+            } else {
+                const data = await response.json();
+                toast("error", data.message || "Erreur lors de la suppression");
+            }
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur réseau ou serveur");
+        }
+    };
 
     return (
         <div className="file-viewer submenus">
@@ -32,6 +62,7 @@ function FileViewer({ file, return2main }) {
                     wordBreak: "break-all"
                 }}>
                 <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem' }}><FontAwesomeIcon icon={icon} />{file.name}</h2>
+                <div><a href={`http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}><FontAwesomeIcon icon={faDownload} /></a><FontAwesomeIcon icon={faTrashCan} onClick={deleteFile} /></div>
                 {file.fileTypeName === "Image" ? (
                     <img
                         key={file.hash}
