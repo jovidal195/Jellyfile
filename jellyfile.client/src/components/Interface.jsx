@@ -28,14 +28,14 @@ export default function Interface({ toggleTheme, theme}) {
     }, []);
 
     useEffect(() => {
-        fetch('http://localhost:5291/api/auth/me', { credentials: 'include' })
+        fetch('/api/auth/me', { credentials: 'include' })
             .then(res => {
                 if (res.ok) return res.json();
                 throw new Error('Not logged in');
             })
             .then(data => {
                 setUser(data);
-                setavatarLink(`http://localhost:5291/api/files/avatar/${data.username}?t=${Date.now()}`);
+                setavatarLink(`/api/files/avatar/${data.username}?t=${Date.now()}`);
                 reloadTree();
             })
             .catch((err) => {
@@ -43,7 +43,7 @@ export default function Interface({ toggleTheme, theme}) {
                 setUser(null)
             })
 
-        fetch("http://localhost:5291/api/files/tree", {
+        fetch("/api/files/tree", {
             credentials: "include"
         })
             .then(res => res.json())
@@ -125,7 +125,7 @@ export default function Interface({ toggleTheme, theme}) {
                 <UserTree user={user} tree={tree} setFile={setFile} />
                 <div className="right-box">
                     <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} />
-                    <FileZone user={user} reloadTree={reloadTree}/>
+                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} />
                     <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree}/>
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />

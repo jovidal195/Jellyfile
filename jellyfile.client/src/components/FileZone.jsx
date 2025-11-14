@@ -2,8 +2,9 @@
 import { useToast } from "./ToastProvider";
 import './FileZone.css';
 import Modal from "./Modal";
+import { displayFilePage } from "../utils/displayFilePage.js";
 
-export default function FileZone({ user , reloadTree }) {
+export default function FileZone({ user, reloadTree, setFile }) {
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const inputRef = useRef(null);
@@ -43,7 +44,7 @@ export default function FileZone({ user , reloadTree }) {
         setModalOpen(true);
 
         try {
-            const res = await fetch(`http://localhost:5291/api/files/upload`, {
+            const res = await fetch(`/api/files/upload`, {
                 method: "POST",
                 body: formData,
                 credentials: "include",
@@ -55,6 +56,7 @@ export default function FileZone({ user , reloadTree }) {
                 toast("success", "Fichier téléversé");
                 setModalOpen(false)
                 reloadTree();
+                displayFilePage(data, setFile);
             } else {
                 console.error(res);
                 toast("error", data.message);

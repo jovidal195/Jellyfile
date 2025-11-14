@@ -179,23 +179,23 @@ namespace Jellyfile.Server.Controllers
             dbUser.StorageUsedBytes += poidsFichier;
             await _db.SaveChangesAsync();
 
+
             if (!string.IsNullOrEmpty(compress))
             {
                 dbUser.Profile.Avatar = dbFile.Id;
                 await _db.SaveChangesAsync();
             }
 
+            var fileType = await _db.FileTypes.FindAsync(fileTypeId);
+
             // =================================================================
             // Validation complète et retour vers le frontend
             // =================================================================
             return Ok(new
             {
-                dbFile.Id,
                 dbFile.Name,
-                dbFile.Path,
                 dbFile.SizeBytes,
-                Type = fileTypeId,
-                Owner = dbUser.Username,
+                FileTypeName = fileType?.Name,
                 dbFile.CreatedAt,
                 dbFile.Uuid
             });
@@ -234,7 +234,7 @@ namespace Jellyfile.Server.Controllers
                         .Select(f => new
                         {
                             f.Name,
-                            f.Hash,
+                            //f.Hash,
                             f.Uuid,
                             f.SizeBytes,
                             f.CreatedAt,
@@ -273,7 +273,7 @@ namespace Jellyfile.Server.Controllers
                         Files = myFiles
                         .Select(f => new {
                             f.Name,
-                            f.Hash,
+                            //f.Hash,
                             f.Uuid,
                             f.Path,
                             f.SizeBytes,
@@ -291,7 +291,7 @@ namespace Jellyfile.Server.Controllers
                         Files = sharedFiles
                         .Select(f => new {
                             f.Name,
-                            f.Hash,
+                            //f.Hash,
                             f.Uuid,
                             f.Path,
                             f.SizeBytes,
