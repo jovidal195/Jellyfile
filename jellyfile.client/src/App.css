@@ -45,3 +45,9 @@ th, td {
     --interface-leftbox-text: #ffffff;
     --interface-rightbox-text: #ffffff;
 }
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-textfield-decoration-container {
+    display: none !important;
+}

@@ -6,6 +6,7 @@
     background: var(--login-bg);
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     color: var(--login-text);
+    position: relative;
 }
 
 .login-container h2 {
@@ -45,4 +46,19 @@
     color: red;
     text-align: center;
     margin-top: 10px;
+}
+
+.login-container input {
+    width: 100%;
+    padding-right: 40px; /* laisse de la place pour l'icône */
+    box-sizing: border-box;
+}
+
+.login-container .toggle-eye {
+    position: absolute;
+    transform: translateY(33%) translateX(-120%);
+    cursor: pointer;
+    user-select: none;
+    font-size: 1.2em;
+    color: #555;
 }

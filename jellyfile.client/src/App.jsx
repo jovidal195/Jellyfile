@@ -19,7 +19,7 @@ function App() {
         setTheme(appliedTheme);
         document.documentElement.setAttribute("data-theme", appliedTheme);
 
-        fetch('http://localhost:5291/api/auth/me', { credentials: 'include' })
+        fetch('/api/auth/me', { credentials: 'include' })
             .then(res => {
                 if (res.ok) return res.json();
                 throw new Error('Not logged in');

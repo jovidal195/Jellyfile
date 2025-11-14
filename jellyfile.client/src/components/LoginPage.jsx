@@ -1,10 +1,13 @@
-import { useState } from 'react';
+ï»¿import { useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';  
 import './Login.css';
 
 export default function LoginPage({ onLoginSuccess }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [show, setShow] = useState(false);
 
     const login = async () => {
         const res = await fetch('http://localhost:5291/api/auth/login', {
@@ -15,7 +18,7 @@ export default function LoginPage({ onLoginSuccess }) {
         });
 
         if (res.ok) {
-            onLoginSuccess(username);   // on indique à App.jsx que login réussi
+            onLoginSuccess(username);   // on indique Ã  App.jsx que login rÃ©ussi
             setError('');
         } else {
             setError('Login failed');
@@ -23,12 +26,17 @@ export default function LoginPage({ onLoginSuccess }) {
     };
 
     return (
-        <form className="login-container" onSubmit={e => { e.preventDefault(); login(); }}>
+        <div className="login-container" onSubmit={e => { e.preventDefault(); login(); }}>
             <h2>Connexion</h2>
             <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-            <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+            <input placeholder="Password" type={show ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} />
+            <span className="toggle-eye" onClick={() => setShow(!show)}>
+                {show ? <FontAwesomeIcon icon={faEyeSlash} /> : <FontAwesomeIcon icon={faEye} />}
+            </span>
             <button type="submit">Login</button>
             {error && <p className="login-error">{error}</p>}
-        </form>
+
+            
+        </div>
     );
 }
