@@ -1,6 +1,11 @@
 ﻿import { useToast } from "./ToastProvider";
 import { useState } from "react";
-export default function UserActions({ user, onClose, return2main, setUsers }) {
+import ToggleSwitch from "./ToggleSwitch";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
+
+export default function UserActions({ user, onClose, return2main, setUsers, toggleTheme, theme}) {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const toast = useToast();
 
     const handleLogout = async () => {
@@ -70,6 +75,7 @@ export default function UserActions({ user, onClose, return2main, setUsers }) {
 
     return (
         <span className="user-actions">
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: "20px", justifyContent: "center" }}><FontAwesomeIcon icon={faSun} /><ToggleSwitch onChange={toggleTheme} checked={theme === "dark"} /><FontAwesomeIcon icon={faMoon} /></div>
             <button onClick={return2main}>Home</button>
             <button onClick={loadProfile}>Profil</button>
             {user?.role === "Admin" && (

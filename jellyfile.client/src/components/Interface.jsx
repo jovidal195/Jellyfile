@@ -11,7 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
 
-export default function Interface() {
+export default function Interface({ toggleTheme, theme}) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [users, setUsers] = useState([]);
@@ -116,9 +116,9 @@ export default function Interface() {
                 </span>
                 {menuOpen &&
                     (isMobile ? (
-                    <UserModal user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} />
+                    <UserModal user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} toggleTheme={toggleTheme} theme={theme} />
                     ) : (
-                        <UserMenu user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} />
+                        <UserMenu user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} toggleTheme={toggleTheme} theme={theme} />
                     ))}
             </header>
             <div className="content">

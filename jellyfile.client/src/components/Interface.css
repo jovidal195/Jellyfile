@@ -160,7 +160,6 @@
 
 .modal-content-navigation {
     background-color: var(--leftbox-bg);
-    color: var(--interface-rightbox-text);
     padding: 20px;
     border-radius: 16px;
     width: 80%;

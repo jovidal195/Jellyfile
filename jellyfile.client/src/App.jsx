@@ -9,8 +9,16 @@ import './App.css';
 function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [theme, setTheme] = useState("light");
 
     useEffect(() => {
+        const stored = localStorage.getItem("theme");
+        const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+        const appliedTheme = stored === "dark" || stored === "light" ? stored : (systemPrefersDark ? "dark" : "light");
+        setTheme(appliedTheme);
+        document.documentElement.setAttribute("data-theme", appliedTheme);
+
         fetch('http://localhost:5291/api/auth/me', { credentials: 'include' })
             .then(res => {
                 if (res.ok) return res.json();
@@ -23,6 +31,17 @@ function App() {
             .finally(() => setLoading(false));
     }, []);
 
+    const toggleTheme = () => {
+        const newTheme = theme === "dark" ? "light" : "dark";
+        setTheme(newTheme);
+
+        // On sauvegarde le choix utilisateur
+        localStorage.setItem("theme", newTheme);
+
+        document.documentElement.setAttribute("data-theme", newTheme);
+    };
+
+
     if (loading) return <div>Chargement...</div>;
 
     return (
@@ -31,7 +50,7 @@ function App() {
                 <Routes>
                     {/* Route principale selon l’état de login */}
                     {user ? (
-                        <Route path="/*" element={<Interface />} />
+                        <Route path="/*" element={<Interface toggleTheme={toggleTheme} theme={theme} />} />
                     ) : (
                         <Route path="/*" element={<LoginPage onLoginSuccess={setUser} />} />
                     )}

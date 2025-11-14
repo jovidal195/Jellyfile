@@ -107,7 +107,7 @@ export default function menuProfil({ user, setavatarLink, avatarLink, reloadTree
                             onError={() => setavatarLink("")}
                         />
                     ) : (
-                        <FontAwesomeIcon icon={faUser} size="5x" />
+                            <FontAwesomeIcon icon={faUser} size="5x" style={{ color: "#808080"}} />
                     )}
                     <input
                         type="file"
