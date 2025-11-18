@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState, useRef } from "react";
 import HTMLFlipBook from "react-pageflip";
+import "./PDFFlipbook.css"
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min?url";
 import { useToast } from "./ToastProvider";
@@ -15,10 +16,25 @@ export default function PDFFlipbook({ fileUrl }) {
     const toast = useToast();
     const flipBookRef = useRef(null);
 
-    const [dimensions, setDimensions] = useState({
-        width: window.innerWidth * 0.6,
-        height: window.innerHeight * 0.6
-    });
+    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    const [pageRatio, setPageRatio] = useState(null); // largeur / hauteur
+
+    const computeDimensions = (ratio) => {
+        // 60 % de l'écran pour le LIVRE (= 2 pages)
+        const maxBookWidth = window.innerWidth * 0.7;
+        const maxBookHeight = window.innerHeight * 0.7;
+
+        // largeur max d'une page = moitié de la largeur du livre
+        let pageWidth = maxBookWidth / 2;
+        let pageHeight = pageWidth / ratio;
+
+        if (pageHeight > maxBookHeight) {
+            pageHeight = maxBookHeight;
+            pageWidth = pageHeight * ratio;
+        }
+
+        return { width: pageWidth, height: pageHeight };
+    };
 
     const isMobile = window.innerWidth < 640;
     const buttonStyle = {
@@ -64,8 +80,6 @@ export default function PDFFlipbook({ fileUrl }) {
     useEffect(() => {
         const loadPdf = async () => {
 
-            console.log(fileUrl);
-
             if (!fileUrl) {
                 toast("error", "Aucune fichier reçu")
                 setPages([]);
@@ -91,9 +105,19 @@ export default function PDFFlipbook({ fileUrl }) {
                 const pdf = await pdfjsLib.getDocument({ url: fileUrl, withCredentials: true }).promise;
                 const renderedPages = [];
 
+                let ratio = pageRatio;
+
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const viewport = page.getViewport({ scale: 2 });
+
+                    // On prend le ratio sur la première page
+                    if (i === 1) {
+                        ratio = viewport.width / viewport.height;
+                        setPageRatio(ratio);
+                        setDimensions(computeDimensions(ratio));
+                    }
+
                     const canvas = document.createElement("canvas");
                     const context = canvas.getContext("2d");
                     canvas.width = viewport.width;
@@ -103,6 +127,7 @@ export default function PDFFlipbook({ fileUrl }) {
                     renderedPages.push(canvas.toDataURL());
                 }
 
+
                 setPages(renderedPages);
             } catch (err) {
                 toast("error", "Impossible de charger le PDF")
@@ -111,17 +136,22 @@ export default function PDFFlipbook({ fileUrl }) {
             }
         };
 
+
         loadPdf();
+    }, [fileUrl]);
+
+    useEffect(() => {
+        if (!pageRatio) return;
 
         const handleResize = () => {
-            setDimensions({
-                width: window.innerWidth * 0.6,
-                height: window.innerHeight * 0.6
-            });
+            setDimensions(computeDimensions(pageRatio));
         };
+
         window.addEventListener("resize", handleResize);
+        handleResize(); // init
+
         return () => window.removeEventListener("resize", handleResize);
-    }, [fileUrl]);
+    }, [pageRatio]);
 
     const handleGotoSubmit = (e) => {
         e.preventDefault();
@@ -137,12 +167,22 @@ export default function PDFFlipbook({ fileUrl }) {
     if (pages.length === 0) return <p>Chargement du PDF...</p>;
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "20px" }}>
-            
-            <HTMLFlipBook width={dimensions.width} height={dimensions.height} ref={flipBookRef} showCover={true} onFlip={handleFlip} >
+        <div className="pdf-flipbook-container" >
+            <HTMLFlipBook
+                className="pdf-flipbook"
+                width={dimensions.width}
+                height={dimensions.height}
+                minWidth={100}
+                maxWidth={dimensions.width}
+                maxHeight={dimensions.height}
+                showCover={true}
+                usePortrait={false} // à revoir par rapport aux métadonnées
+                ref={flipBookRef}
+                onFlip={handleFlip}
+            >
                 {pages.map((page, idx) => (
-                    <div key={idx} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-                        <img src={page} alt={`Page ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <div className="pdf-page"  key={idx} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+                        <img src={page} alt={`Page ${idx + 1}`} />
                     </div>
                 ))}
             </HTMLFlipBook>

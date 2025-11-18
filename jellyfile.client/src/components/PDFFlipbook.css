@@ -1,0 +1,48 @@
+.pdf-flipbook-container {
+    width: 100%;
+    max-width: 70vw;
+    margin: 0 auto 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* flipbook lui-même : pas d’ombre globale */
+.pdf-flipbook {
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* wrapper interne */
+.pdf-flipbook .stf__wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+}
+
+/* chaque page */
+.pdf-flipbook .page {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+}
+
+.pdf-flipbook .pdf-page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--interface-bg); /* ou #fff ou transparent, comme tu préfères */
+}
+
+.pdf-flipbook .pdf-page img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+}
