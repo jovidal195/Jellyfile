@@ -28,8 +28,8 @@ function userTree({ user, tree, setFile }) {
 
     const renderFiles = (files, parentKey) => {
         return files.map((f, idx) => {
-            const displayName = f.name.length > 26
-                ? f.name.slice(0, 23) + '...'
+            const displayName = f.name.length > 25
+                ? f.name.slice(0, 22) + '...'
                 : f.name;
 
             //console.log(f);
