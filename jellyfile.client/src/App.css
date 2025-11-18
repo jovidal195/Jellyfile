@@ -22,12 +22,11 @@ th, td {
     --login-input-text: #213547;
     --login-button-bg: #e53935;
     --login-button-text: #ffffff;
+    --login-button-hover: #ad2b28;
     /* Interface colors */
     --interface-bg: #ffffff;
-    --interface-topbar-bg: #e53935;
     --interface-leftbox-bg: #f4f4f4;
-    --interface-leftbox-text: #808080;
-    --interface-rightbox-text: #808080;
+    --interface-text: #808080;
 }
 
 /* dark mode override */
@@ -38,12 +37,11 @@ th, td {
     --login-input-text: #ffffff;
     --login-button-bg: #6498ff;
     --login-button-text: #ffffff;
+    --login-button-hover: #90b4fc;
     /* Interface colors */
     --interface-bg: #242424;
-    --interface-topbar-bg: #6498ff;
     --interface-leftbox-bg: #333;
-    --interface-leftbox-text: #ffffff;
-    --interface-rightbox-text: #ffffff;
+    --interface-text: #ffffff;
 }
 
 input[type="password"]::-ms-reveal,

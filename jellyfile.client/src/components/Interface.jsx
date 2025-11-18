@@ -98,7 +98,7 @@ export default function Interface({ toggleTheme, theme}) {
                         onKeyDown={(e) => { if (e.key === 'Enter') console.log('Recherche:', e.target.value) }}
                     />
                     <button onClick={() => console.log('Recherche:', document.querySelector('.search-container input').value)}>
-                        <FontAwesomeIcon icon={faMagnifyingGlass} style={{'color': 'var(--interface-rightbox-text)' }} />
+                        <FontAwesomeIcon icon={faMagnifyingGlass} style={{'color': 'var(--interface-text)' }} />
                     </button>
                 </div>
                 <span className="user-btn" onClick={toggleMenu}>

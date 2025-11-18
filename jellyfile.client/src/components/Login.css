@@ -39,7 +39,7 @@
 }
 
 .login-container button:hover {
-    background: var(--login-button-hover);
+    background-color: var(--login-button-hover);
 }
 
 .login-error {

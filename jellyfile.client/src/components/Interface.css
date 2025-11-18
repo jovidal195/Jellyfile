@@ -8,7 +8,7 @@
 
 .top-bar {
     height: 60px;
-    background-color: var(--interface-topbar-bg);
+    background-color: var(--login-button-bg);
     color: white;
     display: flex;
     align-items: center;
@@ -27,7 +27,7 @@
     width: 30vw;
     max-width: 250px;
     background-color: var(--interface-leftbox-bg);
-    color: var(--interface-leftbox-text);
+    color: var(--interface-text);
     padding: 20px;
 }
 
@@ -40,7 +40,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: var(--interface-rightbox-text);
+    color: var(--interface-text);
     font-size: 1.2em;
     height: calc( 100vh - 60px );
     overflow-y: auto;
@@ -64,7 +64,7 @@
     padding: 8px 2px 8px 8px;
     border-radius: 30px;
     background-color: var(--login-input-bg);
-    color: var(--interface-rightbox-text);
+    color: var(--interface-text);
     width: 100%;
 }
 
@@ -106,7 +106,7 @@
     top: 60px; /* juste sous la top-bar */
     right: 20px;
     background-color: var(--interface-leftbox-bg);
-    color: var(--interface-rightbox-text);
+    color: var(--interface-text);
     border: 1px solid #444;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
