@@ -1,0 +1,54 @@
+name: Build and Release Jellyfile
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22'
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install client dependencies
+      run: |
+        cd jellyfile.client
+        npm ci
+
+    - name: Build client
+      run: |
+        cd jellyfile.client
+        npm run build
+
+    - name: Publish .NET server
+      run: |
+        cd jellyfile.server
+        dotnet publish -c Release -o publish/
+
+    - name: Prepare release package
+      run: |
+        mkdir release
+        cp -r jellyfile.client/dist release/client
+        cp -r jellyfile.server/publish release/server
+        cd release
+        zip -r ../Jellyfile_${GITHUB_REF##*/}.zip .
+
+    - name: Create GitHub Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        files: Jellyfile_${{ github.ref_name }}.zip
