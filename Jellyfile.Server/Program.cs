@@ -113,6 +113,7 @@ internal class Program
         });
 
         builder.Services.AddHostedService<PinCleanupService>();
+        builder.Services.AddSingleton<FileServingService>();
 
         var app = builder.Build();
 

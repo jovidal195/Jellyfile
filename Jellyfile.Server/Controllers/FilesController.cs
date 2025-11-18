@@ -17,11 +17,13 @@ namespace Jellyfile.Server.Controllers
     {
         private readonly MyDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly FileServingService _fileService;
 
-        public FilesController(MyDbContext db, IWebHostEnvironment env)
+        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService)
         {
             _db = db;
             _env = env;
+            _fileService = fileService;
         }
 
         [HttpPost("upload")]
@@ -398,12 +400,7 @@ namespace Jellyfile.Server.Controllers
             if (!System.IO.File.Exists(fullPath))
                 return NotFound(new { message = "Fichier introuvable sur le serveur" });
 
-            // --- Déterminer le content-type ---
-            var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
-            if (!provider.TryGetContentType(fullPath, out var contentType))
-                contentType = "application/octet-stream";
-
-            return PhysicalFile(fullPath, contentType, dbFile.Name);
+            return _fileService.ServeFile(this, fullPath, dbFile.Name);
         }
 
 
@@ -452,7 +449,9 @@ namespace Jellyfile.Server.Controllers
             if (!provider.TryGetContentType(fullPath, out var contentType))
                 contentType = "application/octet-stream";
 
-            return PhysicalFile(fullPath, contentType);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+
+            return _fileService.ServeFile(this, fullPath, avatarFile.Name);
         }
 
         [Authorize]
