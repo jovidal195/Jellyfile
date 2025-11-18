@@ -124,7 +124,7 @@ export default function Interface({ toggleTheme, theme}) {
             <div className="content">
                 <UserTree user={user} tree={tree} setFile={setFile} />
                 <div className="right-box">
-                    <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} />
+                    <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} />
                     <FileZone user={user} reloadTree={reloadTree} setFile={setFile} />
                     <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree}/>
                     {user?.role === "Admin" && (

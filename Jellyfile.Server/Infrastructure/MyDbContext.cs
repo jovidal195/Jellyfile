@@ -84,6 +84,10 @@ namespace Jellyfile.Server.Infrastructure
                 .WithMany(ft => ft.Extensions)
                 .HasForeignKey(fe => fe.FileTypeId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // FilePin
+            modelBuilder.Entity<FilePin>()
+                .HasKey(fp => fp.Id);
         }
     }
 

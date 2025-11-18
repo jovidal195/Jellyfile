@@ -1,13 +1,11 @@
-﻿import UserProfile from "./userProfile";
-import { useToast } from "./ToastProvider";
+﻿import { useToast } from "./ToastProvider";
 import { useState, useEffect } from "react";
 //import { bindEnterForVisible } from "../utils/bindEnterForVisible";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-//import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
+import { bindEnterForVisible } from "../utils/bindEnterForVisible";
+import UserProfile from "./userProfile";
 import Modal from "./Modal";
 import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
-import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import Select from 'react-select';
 
 export default function menuUsers({ users, setUsers }) {

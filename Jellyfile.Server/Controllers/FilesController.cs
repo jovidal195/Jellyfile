@@ -1,5 +1,6 @@
 ﻿using Jellyfile.Server.Infrastructure;
 using Jellyfile.Server.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic.FileIO;
@@ -66,12 +67,6 @@ namespace Jellyfile.Server.Controllers
 
             if (dbUser.StorageUsedBytes + file.Length > dbUser.StorageQuotaBytes)
                 return BadRequest(new { message = "Quota de stockage dépassé. Impossible de téléverser ce fichier." });
-
-            if (dbUser.Profile == null)
-            {
-                dbUser.Profile = new UserProfile();
-                _db.UserProfiles.Add(dbUser.Profile);
-            }
 
 
             // =================================================================
@@ -205,6 +200,10 @@ namespace Jellyfile.Server.Controllers
         [HttpGet("tree")]
         public async Task<IActionResult> GetFileTree()
         {
+            // =================================================================
+            // Vérifie que l'utilisateur est authentifié
+            // =================================================================
+
             var userId = HttpContext.Session.GetInt32("UserId");
             if (userId == null)
                 return Unauthorized(new { message = "Pas de session" });
@@ -212,6 +211,10 @@ namespace Jellyfile.Server.Controllers
             var user = await _db.Users.FindAsync(userId.Value);
             if (user == null)
                 return Unauthorized(new { message = "Utilisateur introuvable" });
+
+            // =================================================================
+            // Construction du tree
+            // =================================================================
 
             if (user.Role == "Admin")
             {
@@ -223,6 +226,7 @@ namespace Jellyfile.Server.Controllers
                 var files = await _db.Files
                     .Include(f => f.CreatedBy)
                     .Include(f => f.FileType)
+                    .Include(f => f.Pins)
                     .AsNoTracking()
                     .ToListAsync();
 
@@ -238,7 +242,14 @@ namespace Jellyfile.Server.Controllers
                             f.Uuid,
                             f.SizeBytes,
                             f.CreatedAt,
-                            FileTypeName = f.FileType.Name
+                            FileTypeName = f.FileType.Name,
+                            Pins = f.Pins
+                                .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
+                                .Select(p => new {
+                                    p.Pin,
+                                    p.ExpiresAt,
+                                    p.Note
+                                })
                         })
                         .ToList()
                 }).ToList();
@@ -250,6 +261,7 @@ namespace Jellyfile.Server.Controllers
                 var myFiles = await _db.Files
                     .Where(f => f.CreatedById == userId.Value)
                     .Include(f => f.FileType)
+                    .Include(f => f.Pins)
                     .AsNoTracking()
                     .ToListAsync();
 
@@ -278,7 +290,14 @@ namespace Jellyfile.Server.Controllers
                             f.Path,
                             f.SizeBytes,
                             f.CreatedAt,
-                            FileTypeName = f.FileType.Name
+                            FileTypeName = f.FileType.Name,
+                            Pins = f.Pins
+                                .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
+                                .Select(p => new {
+                                    p.Pin,
+                                    p.ExpiresAt,
+                                    p.Note
+                                })
                         }).ToList()
                     },
                 };
@@ -297,7 +316,14 @@ namespace Jellyfile.Server.Controllers
                             f.SizeBytes,
                             f.CreatedAt,
                             FileTypeName = f.FileType.Name,
-                            Owner = f.CreatedBy.Username
+                            Owner = f.CreatedBy.Username,
+                            Pins = f.Pins
+                                .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
+                                .Select(p => new {
+                                    p.Pin,
+                                    p.ExpiresAt,
+                                    p.Note
+                                })
                         }).ToList()
                     });
                 }
@@ -429,6 +455,7 @@ namespace Jellyfile.Server.Controllers
             return PhysicalFile(fullPath, contentType);
         }
 
+        [Authorize]
         [HttpDelete("{uuid}/{fileName}")]
         public async Task<IActionResult> DeleteFile(string uuid, string fileName, [FromQuery] string? pin)
         {
@@ -509,6 +536,139 @@ namespace Jellyfile.Server.Controllers
             return Ok(new { message = "Fichier supprimé avec succès" });
         }
 
+        [HttpPost("create/Pin/{uuid}/{fileName}")]
+        public async Task<IActionResult> CreatePin(string uuid, string fileName, [FromBody] CreatePinDto dto)
+        {
+            // =================================================================
+            // Vérifie que l'utilisateur est authentifié
+            // =================================================================
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var user = await _db.Users.FindAsync(userId.Value);
+            if (user == null)
+                return Unauthorized(new { message = "Utilisateur introuvable" });
+
+            // =================================================================
+            // Récupère le fichier
+            // =================================================================
+            var file = await _db.Files
+                .Include(f => f.Pins)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (file == null)
+                return NotFound(new { message = "Fichier introuvable" });
+
+            // Optionnel : vérifier que l'utilisateur peut créer un pin sur ce fichier
+            if (file.CreatedById != userId.Value)
+                return StatusCode(403, new { message = "Pas les droits sur ce fichier" });
+
+            string pinStr = dto.Pin;
+
+            // Vérifie que ce sont uniquement des chiffres
+            if (!pinStr.All(char.IsDigit))
+            {
+                return BadRequest(new { message = "Le PIN doit être un nombre." });
+            }
+
+            // Vérifie la longueur du PIN
+            if (pinStr.Length < 5 || pinStr.Length > 8)
+            {
+                return BadRequest(new { message = "Le PIN doit être compris entre 5 et 8 chiffres." });
+            }
+
+            // Conversion en int (ok car max 8 chiffres)
+            int pinInt = int.Parse(pinStr);
+
+            bool pinExists = file.Pins.Any(p => p.Pin == dto.Pin);
+            if (pinExists)
+            {
+                return Conflict(new { message = "Ce PIN existe déjà pour ce fichier." });
+            }
+
+            // =================================================================
+            // Créer un PIN
+            // =================================================================
+            var filePin = new FilePin
+            {
+                FileId = file.Id,
+                Pin = dto.Pin,
+                Note = dto.Note ?? $"Créé par {user.Username}",  // prend la note si fournie
+                ExpiresAt = dto.ExpiresAt
+            };
+
+            _db.FilePins.Add(filePin);
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                pin = dto.Pin,
+                note = dto.Note,
+                expiresAt = dto.ExpiresAt
+            });
+        }
+
+        [HttpDelete("delete/Pin/{uuid}/{fileName}/{pin}")]
+        public async Task<IActionResult> DeletePin(string uuid, string fileName, int pin)
+        {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var file = await _db.Files.Include(f => f.Pins)
+                                      .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+            if (file == null) return NotFound();
+
+            if (file.CreatedById != userId.Value)
+                return StatusCode(403, new { message = "Pas les droits sur ce fichier" });
+
+            var filePin = file.Pins.FirstOrDefault(p => int.TryParse(p.Pin, out var val) && val == pin);
+            if (filePin == null) return NotFound();
+
+            _db.FilePins.Remove(filePin);
+            await _db.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpPut("update/Pin/{uuid}/{fileName}/{pin}")]
+        public async Task<IActionResult> UpdatePin(string uuid, string fileName, int pin, [FromBody] UpdatePinDto dto)
+        {
+            // Vérifie que l'utilisateur est authentifié
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            // Récupère le fichier et les pins
+            var file = await _db.Files
+                .Include(f => f.Pins)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (file == null)
+                return NotFound(new { message = "Fichier introuvable" });
+
+            if (file.CreatedById != userId.Value)
+                return StatusCode(403, new { message = "Pas les droits sur ce fichier" });
+
+            var filePin = file.Pins.FirstOrDefault(p => int.TryParse(p.Pin, out var val) && val == pin);
+            if (filePin == null)
+                return NotFound(new { message = "PIN introuvable" });
+
+            // Met à jour uniquement les champs autorisés
+            filePin.Note = dto.Note ?? filePin.Note;
+            filePin.ExpiresAt = dto.ExpiresAt;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                pin = filePin.Pin,
+                note = filePin.Note,
+                expiresAt = filePin.ExpiresAt
+            });
+        }
 
     }
 }

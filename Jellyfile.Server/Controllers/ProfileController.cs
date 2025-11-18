@@ -57,7 +57,6 @@ namespace Jellyfile.Server.Controllers
         }
 
         [HttpPost]
-        [HttpPost]
         public async Task<IActionResult> SaveProfile([FromBody] ProfileDto model)
         {
             // 1. Récupère le user de session

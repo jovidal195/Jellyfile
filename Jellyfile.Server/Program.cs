@@ -108,6 +108,7 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.Limits.MaxRequestBodySize = 1073741824; // 1 GB
 });
 
+builder.Services.AddHostedService<PinCleanupService>();
 
 var app = builder.Build();
 
@@ -115,6 +116,9 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+
+    db.Database.EnsureCreated();
+
     DbInitializer.EnsureDatabaseReady(db);
 
     if (!db.Users.Any(u => u.Username == "admin"))

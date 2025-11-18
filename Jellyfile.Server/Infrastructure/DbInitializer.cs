@@ -36,8 +36,19 @@ namespace Jellyfile.Server.Infrastructure
                         {
                             // Table manquante → création automatique
                             var columns = entityType.GetProperties()
-                                            .Where(p => p.PropertyType.IsPrimitive || p.PropertyType == typeof(string) || p.PropertyType == typeof(DateTime))
-                                            .Select(p => $"{p.Name} {GetSqlType(p.PropertyType)}");
+                            .Where(p => p.PropertyType.IsPrimitive || p.PropertyType == typeof(string) || p.PropertyType == typeof(DateTime))
+                            .Select(p =>
+                            {
+                                var type = GetSqlType(p.PropertyType);
+                                var notNull = p.PropertyType.IsValueType && Nullable.GetUnderlyingType(p.PropertyType) == null ? "NOT NULL" : "";
+                                var defaultValue = type == "INTEGER" ? "DEFAULT 0" :
+                                                   type == "BOOLEAN" ? "DEFAULT 0" :
+                                                   type == "DATETIME" ? "DEFAULT CURRENT_TIMESTAMP" : "";
+                                var columnDef = p.Name == "Id"
+                                    ? $"{p.Name} INTEGER PRIMARY KEY"
+                                    : $"{p.Name} {type} {notNull} {defaultValue}".Trim();
+                                return columnDef;
+                            });
                             var sql = $"CREATE TABLE [{tableName}] ({string.Join(",", columns)})";
                             using var createCmd = db.Database.GetDbConnection().CreateCommand();
                             createCmd.CommandText = sql;
@@ -110,43 +121,40 @@ namespace Jellyfile.Server.Infrastructure
             }
         }
 
-        private static void AddColumn(MyDbContext db, string tableName, string columnName, Type type)
-        {
-            string sql = $"ALTER TABLE [{tableName}] ADD COLUMN [{columnName}]";
-
-            if (type == typeof(string))
-                sql += " TEXT";
-            else if (type == typeof(int))
-                sql += " INTEGER";
-            else if (type == typeof(long))
-                sql += " BIGINT";
-            else if (type == typeof(bool))
-                sql += " BOOLEAN";
-            else if (type == typeof(DateTime))
-                sql += " DATETIME";
-            else
-                sql += " TEXT"; // fallback
-
-            try
+            private static void AddColumn(MyDbContext db, string tableName, string columnName, Type type)
             {
-                db.Database.ExecuteSqlRaw(sql);
-            }
-            catch
-            {
-                // ignore si déjà existante
-            }
-        }
+                string sql = $"ALTER TABLE [{tableName}] ADD COLUMN [{columnName}]";
 
-        private static string GetSqlType(Type type)
-        {
-            if (type == typeof(string)) return "TEXT";
-            if (type == typeof(int)) return "INTEGER";
-            if (type == typeof(long)) return "BIGINT";
-            if (type == typeof(bool)) return "BOOLEAN";
-            if (type == typeof(DateTime) || Nullable.GetUnderlyingType(type) == typeof(DateTime))
-                return "DATETIME";
-            if (type.IsEnum) return "INTEGER";
-            return "TEXT";
-        }
+                if (type.IsValueType && Nullable.GetUnderlyingType(type) == null)
+                {
+                    if (type == typeof(bool) || type == typeof(int) || type.IsEnum)
+                        sql += " NOT NULL DEFAULT 0";
+                    else if (type == typeof(long))
+                        sql += " NOT NULL DEFAULT 0";
+                    else if (type == typeof(DateTime))
+                        sql += " NOT NULL DEFAULT CURRENT_TIMESTAMP";
+                }
+
+                try
+                {
+                    db.Database.ExecuteSqlRaw(sql);
+                }
+                catch
+                {
+                    // ignore si déjà existante
+                }
+            }
+
+            private static string GetSqlType(Type type)
+            {
+                if (type == typeof(string)) return "TEXT";
+                if (type == typeof(int)) return "INTEGER";
+                if (type == typeof(long)) return "BIGINT";
+                if (type == typeof(bool)) return "BOOLEAN";
+                if (type == typeof(DateTime) || Nullable.GetUnderlyingType(type) == typeof(DateTime))
+                    return "DATETIME";
+                if (type.IsEnum) return "INTEGER";
+                return "TEXT";
+            }
     }
 }

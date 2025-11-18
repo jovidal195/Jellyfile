@@ -1,9 +1,9 @@
-﻿import UserProfile from "./userProfile";
-import { useToast } from "./ToastProvider";
+﻿import { useToast } from "./ToastProvider";
 import { useEffect, useRef, useState } from "react";
 import { bindEnterForVisible } from "../utils/bindEnterForVisible";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
+import UserProfile from "./userProfile";
 import Modal from "./Modal";
 import AvatarCropModal from "./AvatarCropModal";
     
