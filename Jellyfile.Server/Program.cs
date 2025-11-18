@@ -197,13 +197,13 @@ internal class Program
 
         app.MapControllers();
 
-        app.UseEndpoints(endpoints =>
+        Action<IEndpointRouteBuilder> configure = endpoints =>
         {
-            endpoints.MapControllers(); // tes /api/*
-
-            // <-- TOUT le reste redirigé vers React index.html
-            endpoints.MapFallbackToFile("index.html");
-        });
+            endpoints.MapControllers();
+            const string FilePath = "index.html";
+            endpoints.MapFallbackToFile(FilePath);
+        };
+        app.UseEndpoints(configure);
 
         app.Run();
     }
