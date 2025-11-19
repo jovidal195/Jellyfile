@@ -12,6 +12,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Debug folder structure
+      run: ls -R
+
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
@@ -35,14 +41,14 @@ jobs:
 
     - name: Publish .NET server
       run: |
-        cd jellyfile.server
+        cd Jellyfile.Server
         dotnet publish -c Release -o publish/
 
     - name: Prepare release package
       run: |
         mkdir release
         cp -r jellyfile.client/dist release/client
-        cp -r jellyfile.server/publish release/server
+        cp -r Jellyfile.Server/publish release/server
         cd release
         zip -r ../Jellyfile_${GITHUB_REF##*/}.zip .
 
