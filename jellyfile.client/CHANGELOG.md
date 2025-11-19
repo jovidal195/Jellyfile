@@ -1,4 +1,10 @@
+# version 0.0.2
+- package pour tests de déploiement server
+
 # version 0.0.1
+- package pour tests de workflow github
+
+# version 0.0.0
 - implemented initial version
 
 # the visual studio stuff
