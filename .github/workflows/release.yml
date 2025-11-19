@@ -53,9 +53,9 @@ jobs:
         zip -r ../Jellyfile_${GITHUB_REF##*/}.zip .
 
     - name: Create GitHub Release
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ github.ref_name }}
-        name: Release ${{ github.ref_name }}
-        artifacts: Jellyfile_${{ github.ref_name }}.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create v${{ github.ref_name }} ./Jellyfile_v${{ github.ref_name }}.zip \
+          --title "Release v${{ github.ref_name }}" \
+          --notes "Automated release from GitHub Actions"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
