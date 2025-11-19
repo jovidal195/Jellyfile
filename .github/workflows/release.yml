@@ -52,8 +52,7 @@ jobs:
         ZIP_NAME="Jellyfile_${GITHUB_REF##*/}.zip"
         cd release
         zip -r "../$ZIP_NAME" .
-        cd ..
-        ls -l ../release
+        ls -l .. 
 
     - name: Create GitHub Release
       run: |
