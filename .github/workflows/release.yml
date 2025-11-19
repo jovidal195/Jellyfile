@@ -50,8 +50,8 @@ jobs:
     - name: Prepare release package
       run: |
         mkdir -p release
-        cp -r jellyfile.client/dist release/client
-        cp -r Jellyfile.Server/publish release/server
+        cp -r jellyfile.client/dist release/jellyfile.client
+        cp -r Jellyfile.Server/publish release/Jellyfile.Server
         ZIP_NAME="Jellyfile_${GITHUB_REF##*/}.zip"
         cd release
         zip -r "../$ZIP_NAME" .
