@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { ToastProvider } from "./Components/ToastProvider";
+import { ToastProvider } from "./components/ToastProvider";
 import LoginPage from './components/LoginPage';
 import Interface from './components/Interface';
 import InvitePage from './components/InvitePage'; // ton composant déjà créé
