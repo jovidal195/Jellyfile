@@ -57,4 +57,5 @@ jobs:
       with:
         tag: ${{ github.ref_name }}
         name: Release ${{ github.ref_name }}
-        files: Jellyfile_${{ github.ref_name }}.zip
+        artifacts: Jellyfile_${{ github.ref_name }}.zip
+        token: ${{ secrets.GITHUB_TOKEN }}
