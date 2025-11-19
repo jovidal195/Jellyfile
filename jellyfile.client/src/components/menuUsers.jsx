@@ -146,7 +146,7 @@ export default function menuUsers({ users, setUsers }) {
             const formData = new FormData(newUserForm);
             const body = Object.fromEntries(formData.entries());
             console.log(body);
-            const res = await fetch(`http://localhost:5291/api/users/register`, {
+            const res = await fetch(`/api/users/register`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
@@ -172,7 +172,7 @@ export default function menuUsers({ users, setUsers }) {
 
     const removeUser = async () => {
         try {
-            const res = await fetch(`http://localhost:5291/api/users/remove/${selectedUserId}`, {
+            const res = await fetch(`/api/users/remove/${selectedUserId}`, {
                 method: "DELETE",
                 credentials: "include"
             });
@@ -207,7 +207,7 @@ export default function menuUsers({ users, setUsers }) {
         }
 
 
-        const res = await fetch('http://localhost:5291/api/profile', {
+        const res = await fetch('/api/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

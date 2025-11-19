@@ -26,7 +26,7 @@ export default function menuProfil({ user, setavatarLink, avatarLink, reloadTree
         const formData = new FormData(form);
         const body = Object.fromEntries(formData.entries());
 
-        const res = await fetch('http://localhost:5291/api/profile', {
+        const res = await fetch('/api/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -66,7 +66,7 @@ export default function menuProfil({ user, setavatarLink, avatarLink, reloadTree
             console.log(user);
             formData.append("compress", "avatar");
 
-            const res = await fetch("http://localhost:5291/api/files/upload", {
+            const res = await fetch("/api/files/upload", {
                 method: "POST",
                 body: formData,
                 credentials: "include"
@@ -83,7 +83,7 @@ export default function menuProfil({ user, setavatarLink, avatarLink, reloadTree
             toast("success", "Avatar sauvegardé !");
             setModalOpen(false);
             setSelectedFile(null);
-            setavatarLink(`http://localhost:5291/api/files/avatar/${user.username}?t=${Date.now()}`);
+            setavatarLink(`/api/files/avatar/${user.username}?t=${Date.now()}`);
             reloadTree();
 
             // Ici tu peux mettre à jour localement l’avatar si besoin

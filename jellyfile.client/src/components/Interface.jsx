@@ -74,7 +74,7 @@ export default function Interface({ toggleTheme, theme}) {
     const reloadTree = async () => {
         if (!user) return;
         try {
-            const res = await fetch("http://localhost:5291/api/files/tree", { credentials: "include" });
+            const res = await fetch("/api/files/tree", { credentials: "include" });
             if (res.ok) {
                 const data = await res.json();
                 setTree(data);

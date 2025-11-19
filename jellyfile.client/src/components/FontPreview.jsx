@@ -33,7 +33,7 @@ export default function FontPreview({
         const ctx = canvas.getContext("2d");
         ctx.scale(dpr, dpr); // scale drawing to DPR
 
-        const url = `http://localhost:5291/api/files/${file.uuid}/${file.name}?t=${Date.now()}`;
+        const url = `/api/files/${file.uuid}/${file.name}?t=${Date.now()}`;
 
         // Fetch the font with credentials (session)
         fetch(url, { credentials: "include" })

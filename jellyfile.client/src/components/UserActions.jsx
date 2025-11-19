@@ -9,7 +9,7 @@ export default function UserActions({ user, onClose, return2main, setUsers, togg
     const toast = useToast();
 
     const handleLogout = async () => {
-        const res = await fetch('http://localhost:5291/api/auth/logout', {
+        const res = await fetch('/api/auth/logout', {
             method: 'POST',
             credentials: 'include'
         });
@@ -33,7 +33,7 @@ export default function UserActions({ user, onClose, return2main, setUsers, togg
     const loadProfile = async () => {
         onClose();
 
-        const res = await fetch('http://localhost:5291/api/profile', {
+        const res = await fetch('/api/profile', {
             method: 'GET',
             credentials: 'include'
         });
