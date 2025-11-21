@@ -128,6 +128,17 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
                     <FontAwesomeIcon icon={faTrashCan} onClick={() => { setPinToDelete(row); openModal("deletePin"); }} style={{ color: "var(--login-button-bg)" }} />
                 </div>
             )
+        },
+        {
+            name: 'Partager',
+            cell: row => (
+                <button onClick={() => {
+                    const pinUrl = `${window.location.origin}/pin/${file.uuid}/${file.name}`;
+                    navigator.clipboard.writeText(pinUrl)
+                        .then(() => toast("info","Lien copié dans le presse-papiers !"))
+                        .catch(err => console.error("Erreur lors de la copie : ", err));
+                }}>URL</button>
+            )
         }
     ];
 
@@ -361,7 +372,7 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
                             style={{ width: "80%" }}
                         >
                             <source
-                                        src={`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
+                                src={`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
                                 type="audio/mpeg"
                             />
                             Ton navigateur ne supporte pas la lecture audio.

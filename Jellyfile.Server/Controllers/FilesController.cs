@@ -669,5 +669,80 @@ namespace Jellyfile.Server.Controllers
             });
         }
 
+        [HttpPost("pin/validate/{uuid}/{fileName}")]
+        public async Task<IActionResult> ValidatePin(string uuid, string fileName, [FromBody] ValidatePinDto dto)
+        {
+            var dbFile = await _db.Files
+                .Include(f => f.FileType)
+                .Include(f => f.Pins)
+                .Include(f => f.CreatedBy)
+                .Include(f => f.Owners)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (dbFile == null)
+                return StatusCode(403, new { message = "PIN invalide" });
+
+            var filePin = dbFile.Pins
+                .FirstOrDefault(p => p.Pin == dto.Pin &&
+                                     (p.ExpiresAt == null || p.ExpiresAt > DateTime.UtcNow));
+
+            if (filePin == null)
+                return StatusCode(403, new { message = "PIN invalide" });
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+
+            // ==============================
+            // Cas : utilisateur authentifié
+            // ==============================
+
+            var fileObj = new
+            {
+                dbFile.Name,
+                dbFile.Uuid,
+                dbFile.Path,
+                dbFile.SizeBytes,
+                dbFile.CreatedAt,
+                FileTypeName = dbFile.FileType.Name,
+                Owner = dbFile.CreatedBy.Username,
+                Pins = dbFile.Pins
+                    .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
+                    .Select(p => new {
+                        p.Pin,
+                        p.ExpiresAt,
+                        p.Note
+                    })
+            };
+
+            if (userId != null)
+            {
+                var access = dbFile.Owners
+                    .Any(fo => fo.UserId == userId.Value &&
+                               fo.Permission == PermissionLevel.AuthUser &&
+                               (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+
+                if (!access)
+                {
+                    // Ajoute l’accès AuthUser
+                    _db.FileOwners.Add(new FileOwner
+                    {
+                        UserId = userId.Value,
+                        Permission = PermissionLevel.AuthUser,
+                        FileId = dbFile.Id
+                    });
+
+                    await _db.SaveChangesAsync();
+                }
+
+                return Ok(new { authenticated = true, file = fileObj });
+            }
+
+            // ==================================
+            // Cas : utilisateur non authentifié
+            // ==================================
+
+            return Ok(new { authenticated = false, file = fileObj });
+        }
+
+
     }
 }

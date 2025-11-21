@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import UserMenu from "./UserMenu";
 import UserModal from "./UserModal";
 import MenuProfil from './menuProfil';
@@ -9,9 +10,11 @@ import UserTree from './userTree';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+import { displayFilePage } from "../utils/displayFilePage.js";
 
 
-export default function Interface({ toggleTheme, theme}) {
+export default function Interface({ toggleTheme, theme }) {
+    const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [users, setUsers] = useState([]);
@@ -51,6 +54,17 @@ export default function Interface({ toggleTheme, theme}) {
             .catch(err => console.error(err));
 
     }, []);
+
+    useEffect(() => {
+        if (!location.state?.fileToDisplay) return;
+
+        const id = setTimeout(() => {
+            displayFilePage(location.state.fileToDisplay, setFile);
+            window.history.replaceState({}, "");
+        }, 0);
+
+        return () => clearTimeout(id);
+    }, [location.state]);
 
     const toggleMenu = (e) => {
         e.stopPropagation();

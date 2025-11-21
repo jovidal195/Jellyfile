@@ -2,7 +2,9 @@
 import { ToastProvider } from "./components/ToastProvider";
 import LoginPage from './components/LoginPage';
 import Interface from './components/Interface';
-import InvitePage from './components/InvitePage'; // ton composant déjà créé
+import InvitePage from './components/InvitePage';
+import PinGatePage from './components/PinGatePage';
+import ExternalPreviewPage from './components/ExternalPreviewPage.jsx';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 
@@ -56,6 +58,8 @@ function App() {
                     )}
                     {/* Route pour l’invitation */}
                     <Route path="/invite" element={<InvitePage />} />
+                    <Route path="/pin/:uuid/:fileName" element={<PinGatePage />} />
+                    <Route path="/external-preview/:uuid/:fileName" element={<ExternalPreviewPage />} />
                 </Routes>
             </Router>
         </ToastProvider>

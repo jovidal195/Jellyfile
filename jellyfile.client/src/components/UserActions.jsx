@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
 
 export default function UserActions({ user, onClose, return2main, setUsers, toggleTheme, theme}) {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const toast = useToast();
 
     const handleLogout = async () => {
