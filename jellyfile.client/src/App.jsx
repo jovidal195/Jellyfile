@@ -58,8 +58,8 @@ function App() {
                     )}
                     {/* Route pour l’invitation */}
                     <Route path="/invite" element={<InvitePage />} />
-                    <Route path="/pin/:uuid/:fileName" element={<PinGatePage />} />
-                    <Route path="/external-preview/:uuid/:fileName" element={<ExternalPreviewPage />} />
+                    <Route path="/pin/:uuid/:accesstoken/:fileName" element={<PinGatePage />} />
+                    <Route path="/external-preview/:uuid/:accesstoken/:fileName" element={<ExternalPreviewPage />} />
                 </Routes>
             </Router>
         </ToastProvider>

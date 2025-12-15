@@ -1,20 +1,24 @@
 ﻿import { useState } from 'react';
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import './FileViewer.css';
-import { useNavigate } from "react-router-dom";
+import { getDeviceFingerprint } from "../utils/deviceFingerprint";
 
 function PinGatePage() {
     const navigate = useNavigate();
-    const { uuid, fileName } = useParams();
+    const { uuid, accesstoken, fileName } = useParams();
     const [pin, setPin] = useState("");
     const [error, setError] = useState(null);
     const [shake, setShake] = useState(false);
 
     async function submit() {
+        const fp = await getDeviceFingerprint();
+        console.log(fp);
+        console.log(JSON.stringify({ pin, accessToken: accesstoken, fingerprint: fp }));
+
         const res = await fetch(`/api/files/pin/validate/${uuid}/${fileName}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pin }),
+            body: JSON.stringify({ pin, accessToken: accesstoken, fingerprint: fp }),
         });
 
         if (!res.ok) {
@@ -36,7 +40,7 @@ function PinGatePage() {
             navigate("/", { state: { fileToDisplay: data.file } });
         } else {
             console.log(data);
-            navigate(`/external-preview/${uuid}/${fileName}?pin=${pin}`);
+            navigate(`/external-preview/${uuid}/${accesstoken}/${fileName}?pin=${pin}`);
         }
     }
 

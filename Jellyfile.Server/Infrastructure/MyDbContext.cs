@@ -19,6 +19,8 @@ namespace Jellyfile.Server.Infrastructure
         public DbSet<FileExtension> FileExtensions { get; set; }
         public DbSet<FileOwner> FileOwners { get; set; }
         public DbSet<FilePin> FilePins { get; set; }
+        public DbSet<FailedFingerprint> FailedFingerprints { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -88,6 +90,17 @@ namespace Jellyfile.Server.Infrastructure
             // FilePin
             modelBuilder.Entity<FilePin>()
                 .HasKey(fp => fp.Id);
+
+            // FilePin ↔ FailedFingerprint
+            modelBuilder.Entity<FailedFingerprint>()
+                .HasKey(ff => ff.Id);
+
+            modelBuilder.Entity<FailedFingerprint>()
+                .HasOne(ff => ff.FilePin)
+                .WithMany(fp => fp.FailedFingerprints)
+                .HasForeignKey(ff => ff.FilePinId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
     }
 

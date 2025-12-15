@@ -1,9 +1,10 @@
 ﻿import { useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import './FileViewer.css';
+import { getDeviceFingerprint } from "../utils/deviceFingerprint";
 
 function ExternalPreviewPage() {
-    const { uuid, fileName } = useParams();
+    const { uuid, accesstoken, fileName } = useParams();
     const [searchParams] = useSearchParams();
     const pin = searchParams.get("pin");
     const [fileUrl, setFileUrl] = useState(null);
@@ -16,7 +17,9 @@ function ExternalPreviewPage() {
         }
 
         const fetchFile = async () => {
-            const res = await fetch(`/api/files/${uuid}/${fileName}?pin=${pin}`);
+            const fp = await getDeviceFingerprint();
+            console.log(`/api/files/${uuid}/${fileName}?pin=${pin}&accessToken=${accesstoken}&fp=${fp}`);
+            const res = await fetch(`/api/files/${uuid}/${fileName}?pin=${pin}&accessToken=${accesstoken}&fp=${fp}`);
             if (!res.ok) {
                 setError("Impossible de récupérer le fichier");
                 return;
@@ -29,7 +32,7 @@ function ExternalPreviewPage() {
         };
 
         fetchFile();
-    }, [uuid, fileName, pin]);
+    }, [uuid, accesstoken, fileName, pin]);
 
     const backHome = () => {
         window.location.href = `/`;

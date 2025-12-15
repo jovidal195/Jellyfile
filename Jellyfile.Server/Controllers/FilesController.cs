@@ -1,5 +1,6 @@
 ﻿using Jellyfile.Server.Infrastructure;
 using Jellyfile.Server.Models;
+using DbFile = Jellyfile.Server.Models.File;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,12 +19,14 @@ namespace Jellyfile.Server.Controllers
         private readonly MyDbContext _db;
         private readonly IWebHostEnvironment _env;
         private readonly FileServingService _fileService;
+        private readonly IConfiguration _config;
 
-        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService)
+        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config)
         {
             _db = db;
             _env = env;
             _fileService = fileService;
+            _config = config;
         }
 
         [HttpPost("upload")]
@@ -247,10 +250,27 @@ namespace Jellyfile.Server.Controllers
                             FileTypeName = f.FileType.Name,
                             Pins = f.Pins
                                 .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                                .Select(p => new {
-                                    p.Pin,
-                                    p.ExpiresAt,
-                                    p.Note
+                                .Select(p =>
+                                {
+                                    string accessKey;
+                                    try
+                                    {
+                                        accessKey = ComputeAccessKey(f.Id, p.Pin);
+                                    }
+                                    catch
+                                    {
+                                        accessKey = null;
+                                    }
+
+                                    return new
+                                    {
+                                        p.Pin,
+                                        p.ExpiresAt,
+                                        p.Note,
+                                        accessKey,
+                                        linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
+                                        p.MaxDevices
+                                    };
                                 })
                         })
                         .ToList()
@@ -295,10 +315,27 @@ namespace Jellyfile.Server.Controllers
                             FileTypeName = f.FileType.Name,
                             Pins = f.Pins
                                 .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                                .Select(p => new {
-                                    p.Pin,
-                                    p.ExpiresAt,
-                                    p.Note
+                                .Select(p =>
+    {
+                                    string accessKey;
+                                    try
+                                    {
+                                        accessKey = ComputeAccessKey(f.Id, p.Pin);
+                                    }
+                                    catch
+                                    {
+                                        accessKey = null;
+                                    }
+
+                                    return new
+                                    {
+                                        p.Pin,
+                                        p.ExpiresAt,
+                                        p.Note,
+                                        accessKey,
+                                        linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
+                                        p.MaxDevices
+                                    };
                                 })
                         }).ToList()
                     },
@@ -321,10 +358,27 @@ namespace Jellyfile.Server.Controllers
                             Owner = f.CreatedBy.Username,
                             Pins = f.Pins
                                 .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                                .Select(p => new {
-                                    p.Pin,
-                                    p.ExpiresAt,
-                                    p.Note
+                                .Select(p =>
+                                {
+                                    string accessKey;
+                                    try
+                                    {
+                                        accessKey = ComputeAccessKey(f.Id, p.Pin);
+                                    }
+                                    catch
+                                    {
+                                        accessKey = null;
+                                    }
+
+                                    return new
+                                    {
+                                        p.Pin,
+                                        p.ExpiresAt,
+                                        p.Note,
+                                        accessKey,
+                                        linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
+                                        p.MaxDevices
+                                    };
                                 })
                         }).ToList()
                     });
@@ -336,7 +390,7 @@ namespace Jellyfile.Server.Controllers
 
         [HttpGet("{uuid}/{fileName}")]
         [HttpHead("{uuid}/{fileName}")]
-        public async Task<IActionResult> GetFile(string uuid, string fileName, [FromQuery] string? pin)
+        public async Task<IActionResult> GetFile(string uuid, string fileName, [FromQuery] string? pin, [FromQuery] string? accessToken, [FromQuery] string? fp)
         {
             var dbFile = await _db.Files
                 .Include(f => f.Owners)
@@ -347,45 +401,30 @@ namespace Jellyfile.Server.Controllers
             if (dbFile == null)
                 return NotFound(new { message = "Fichier introuvable" });
 
-
-            // Vérifier que le Path contient le bon UUID
             if (!dbFile.Path.Contains(uuid))
                 return NotFound(new { message = "Fichier introuvable (UUID mismatch)" });
 
             var userId = HttpContext.Session.GetInt32("UserId");
 
             User? currentUser = null;
-
             if (userId != null)
-            {
                 currentUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
-            }
 
             bool isAdmin = currentUser?.Role == "Admin";
-
-            // --- Vérification du créateur ---
             bool isCreator = userId != null && dbFile.CreatedById == userId.Value;
-
-            // --- Vérification des partages AuthUser ---
             bool hasAuthAccess = userId != null && dbFile.Owners
                 .Any(fo => fo.UserId == userId.Value && fo.Permission == PermissionLevel.AuthUser &&
                            (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
-
-            // --- Vérification du public ---
             bool isPublic = dbFile.Owners
                 .Any(fo => fo.Permission == PermissionLevel.Public &&
                            (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
 
-            // --- Vérification du PIN ---
-            FilePin? matchingPin = null;
-            if (!string.IsNullOrEmpty(pin))
-            {
-                matchingPin = dbFile.Pins
-                    .FirstOrDefault(fp => fp.Pin == pin && (fp.ExpiresAt == null || fp.ExpiresAt > DateTime.UtcNow));
-            }
+            // Vérification du PIN et fingerprint
+            FilePin? filePin = null;
+            if (!string.IsNullOrEmpty(pin) || !string.IsNullOrEmpty(accessToken))
+                filePin = await ValidateFilePin(dbFile, pin, accessToken, fp);
 
-            // --- Logique finale d'accès ---
-            if (!isCreator && !hasAuthAccess && !isPublic && matchingPin == null && !isAdmin)
+            if (!isCreator && !hasAuthAccess && !isPublic && filePin == null && !isAdmin)
             {
                 if (userId == null && dbFile.Owners.Any(fo => fo.Permission != PermissionLevel.Public))
                     return Unauthorized(new { message = "Pas de session" });
@@ -393,7 +432,6 @@ namespace Jellyfile.Server.Controllers
                 return Forbid();
             }
 
-            // --- Construire le chemin du fichier ---
             var projectRoot = UserFolderService.FindProjectRoot();
             var fullPath = Path.Combine(projectRoot, "users", dbFile.Path);
 
@@ -402,7 +440,6 @@ namespace Jellyfile.Server.Controllers
 
             return _fileService.ServeFile(this, fullPath, dbFile.Name);
         }
-
 
         [HttpGet("avatar/{username}")]
         public async Task<IActionResult> GetAvatar(string username)
@@ -587,6 +624,7 @@ namespace Jellyfile.Server.Controllers
                 return Conflict(new { message = "Ce PIN existe déjà pour ce fichier." });
             }
 
+
             // =================================================================
             // Créer un PIN
             // =================================================================
@@ -595,17 +633,25 @@ namespace Jellyfile.Server.Controllers
                 FileId = file.Id,
                 Pin = dto.Pin,
                 Note = dto.Note ?? $"Créé par {user.Username}",  // prend la note si fournie
-                ExpiresAt = dto.ExpiresAt
+                ExpiresAt = dto.ExpiresAt,
+                MaxDevices = dto.MaxDevices,
+                FailedDevices = 0
             };
 
             _db.FilePins.Add(filePin);
             await _db.SaveChangesAsync();
 
+            var accessKey = ComputeAccessKey(file.Id, dto.Pin);
+            var linkPath = $"/pin/{file.Uuid}/{accessKey}/{file.Name}";
+
             return Ok(new
             {
                 pin = dto.Pin,
                 note = dto.Note,
-                expiresAt = dto.ExpiresAt
+                expiresAt = dto.ExpiresAt,
+                accessKey,
+                linkPath,
+                dto.MaxDevices
             });
         }
 
@@ -658,6 +704,7 @@ namespace Jellyfile.Server.Controllers
             // Met à jour uniquement les champs autorisés
             filePin.Note = dto.Note ?? filePin.Note;
             filePin.ExpiresAt = dto.ExpiresAt;
+            filePin.MaxDevices = dto.MaxDevices;
 
             await _db.SaveChangesAsync();
 
@@ -665,84 +712,163 @@ namespace Jellyfile.Server.Controllers
             {
                 pin = filePin.Pin,
                 note = filePin.Note,
-                expiresAt = filePin.ExpiresAt
+                expiresAt = filePin.ExpiresAt,
+                maxDevices = filePin.MaxDevices
             });
         }
 
-        [HttpPost("pin/validate/{uuid}/{fileName}")]
-        public async Task<IActionResult> ValidatePin(string uuid, string fileName, [FromBody] ValidatePinDto dto)
+    [HttpPost("pin/validate/{uuid}/{fileName}")]
+    public async Task<IActionResult> ValidatePin(string uuid, string fileName, [FromBody] ValidatePinDto dto)
+    {
+        var pin = dto.Pin;
+        var accessToken = dto.AccessToken;
+        var fp = dto.Fingerprint;
+
+        var dbFile = await _db.Files
+            .Include(f => f.FileType)
+            .Include(f => f.Pins)
+                .ThenInclude(p => p.FailedFingerprints)
+            .Include(f => f.CreatedBy)
+            .Include(f => f.Owners)
+            .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+        Console.WriteLine("before ValidateFilePin");
+        var filePin = await ValidateFilePin(dbFile, dto.Pin, dto.AccessToken, dto.Fingerprint);
+        if (filePin == null)
+            return StatusCode(403, new { message = "PIN invalide ou accès bloqué" });
+        Console.WriteLine("after ValidateFilePin");
+
+        if (dbFile == null)
+            return StatusCode(403, new { message = "PIN invalide" });
+
+        var expectedKey = ComputeAccessKey(dbFile.Id, pin);
+        if (accessToken != expectedKey)
+            return StatusCode(403, new { message = "PIN invalide" });
+
+        var userId = HttpContext.Session.GetInt32("UserId");
+
+        var fileObj = new
         {
-            var dbFile = await _db.Files
-                .Include(f => f.FileType)
-                .Include(f => f.Pins)
-                .Include(f => f.CreatedBy)
-                .Include(f => f.Owners)
-                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+            dbFile.Name,
+            dbFile.Uuid,
+            dbFile.Path,
+            dbFile.SizeBytes,
+            dbFile.CreatedAt,
+            FileTypeName = dbFile.FileType.Name,
+            Owner = dbFile.CreatedBy.Username
+        };
 
-            if (dbFile == null)
-                return StatusCode(403, new { message = "PIN invalide" });
+        if (userId != null)
+        {
+            var access = dbFile.Owners.Any(fo =>
+                fo.UserId == userId.Value &&
+                fo.Permission == PermissionLevel.AuthUser &&
+                (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
 
-            var filePin = dbFile.Pins
-                .FirstOrDefault(p => p.Pin == dto.Pin &&
-                                     (p.ExpiresAt == null || p.ExpiresAt > DateTime.UtcNow));
-
-            if (filePin == null)
-                return StatusCode(403, new { message = "PIN invalide" });
-
-            var userId = HttpContext.Session.GetInt32("UserId");
-
-            // ==============================
-            // Cas : utilisateur authentifié
-            // ==============================
-
-            var fileObj = new
+            if (!access)
             {
-                dbFile.Name,
-                dbFile.Uuid,
-                dbFile.Path,
-                dbFile.SizeBytes,
-                dbFile.CreatedAt,
-                FileTypeName = dbFile.FileType.Name,
-                Owner = dbFile.CreatedBy.Username,
-                Pins = dbFile.Pins
-                    .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                    .Select(p => new {
-                        p.Pin,
-                        p.ExpiresAt,
-                        p.Note
-                    })
-            };
-
-            if (userId != null)
-            {
-                var access = dbFile.Owners
-                    .Any(fo => fo.UserId == userId.Value &&
-                               fo.Permission == PermissionLevel.AuthUser &&
-                               (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
-
-                if (!access)
+                _db.FileOwners.Add(new FileOwner
                 {
-                    // Ajoute l’accès AuthUser
-                    _db.FileOwners.Add(new FileOwner
-                    {
-                        UserId = userId.Value,
-                        Permission = PermissionLevel.AuthUser,
-                        FileId = dbFile.Id
-                    });
+                    UserId = userId.Value,
+                    Permission = PermissionLevel.AuthUser,
+                    FileId = dbFile.Id
+                });
 
-                    await _db.SaveChangesAsync();
-                }
-
-                return Ok(new { authenticated = true, file = fileObj });
+                await _db.SaveChangesAsync();
             }
 
-            // ==================================
-            // Cas : utilisateur non authentifié
-            // ==================================
-
-            return Ok(new { authenticated = false, file = fileObj });
+            return Ok(new { authenticated = true, file = fileObj });
         }
 
+        return Ok(new { authenticated = false, file = fileObj });
+    }
+
+
+        private string ComputeAccessKey(int fileId, string pin)
+        {
+            var secret = _config["InviteSecret"];
+            var raw = $"{fileId}:{pin}:{secret}";
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw));
+            return Convert.ToBase64String(bytes)
+                .Replace("+", "")
+                .Replace("/", "")
+                .Replace("=", "")
+                .Substring(0, 16); // 16 caractères, suffisant
+        }
+
+        private async Task<FilePin?> ValidateFilePin(DbFile dbFile, string? pin, string? accessToken, string? fingerprint)
+        {
+            const int MAX_FP_FAILS = 7;
+
+            if (dbFile == null)
+                return null;
+
+            // Récupérer le PIN correspondant à l'accessToken
+            var activePins = dbFile.Pins.Where(p => p.ExpiresAt == null || p.ExpiresAt > DateTime.UtcNow);
+            var matchingPin = activePins.FirstOrDefault(p => ComputeAccessKey(dbFile.Id, p.Pin) == accessToken);
+
+            if (matchingPin == null)
+                return null;
+
+            Console.WriteLine("matchingPin");
+            Console.WriteLine(matchingPin);
+
+            Console.WriteLine(matchingPin.FailedDevices);
+            Console.WriteLine(matchingPin.MaxDevices);
+
+            // Blocage global si trop de devices échoués
+            if (matchingPin.FailedDevices >= matchingPin.MaxDevices)
+                return null;
+
+            // Fingerprint obligatoire
+            if (string.IsNullOrWhiteSpace(fingerprint))
+            {
+                matchingPin.FailedDevices = matchingPin.MaxDevices;
+                await _db.SaveChangesAsync();
+                return null;
+            }
+
+            var failedFp = matchingPin.FailedFingerprints.FirstOrDefault(f => f.Fingerprint == fingerprint);
+            if (failedFp != null && failedFp.FailCount >= MAX_FP_FAILS)
+                return null;
+            
+            Console.WriteLine("test");
+
+            // PIN invalide (comparé à celui fourni)
+            if (pin != matchingPin.Pin)
+            {
+                if (failedFp == null)
+                {
+                    matchingPin.FailedFingerprints.Add(new FailedFingerprint
+                    {
+                        Fingerprint = fingerprint,
+                        FailCount = 1
+                    });
+                    matchingPin.FailedDevices++;
+                }
+                else
+                {
+                    failedFp.FailCount++;
+                }
+
+                await _db.SaveChangesAsync();
+                return null;
+            }
+
+            // PIN valide -> reset fingerprint
+            if (failedFp != null && failedFp.FailCount > 0)
+            {
+                failedFp.FailCount = 0;
+                if (matchingPin.FailedDevices > 0)
+                    matchingPin.FailedDevices--;
+                await _db.SaveChangesAsync();
+            }
+
+            Console.WriteLine(matchingPin);
+
+            return matchingPin;
+        }
 
     }
 }

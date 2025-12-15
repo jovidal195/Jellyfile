@@ -1,6 +1,7 @@
 ﻿import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload, faDice } from '@fortawesome/free-solid-svg-icons';
+import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload, faDice, faUserGroup, faMobileScreenButton } from '@fortawesome/free-solid-svg-icons';
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import PDFFlipbook from './PDFFlipbook';
 import FontPreview from './FontPreview';
 import { useToast } from "./ToastProvider";
@@ -12,6 +13,7 @@ import Select from 'react-select';
 
 function FileViewer({ file, reloadTree, return2main, setFile }) {
     const toast = useToast();
+    const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState(null);
     const [modalData, setModalData] = useState(null);
@@ -19,10 +21,12 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
     const [filterText, setFilterText] = useState("");
     const [pinToDelete, setPinToDelete] = useState("");
     const [defaultPin, setDefaultPin] = useState(generateRandomPin);
+    const [defaultDevicesNumber, setDefaultDevicesNumber] = useState(3);
     const [expirationEnabled, setExpirationEnabled] = useState(false);
     const [pinToEdit, setPinToEdit] = useState(null);
     const [pinsByFile, setPinsByFile] = useState({});
     const pinInputRef = useRef(null);
+    const deviceInputRef = useRef(null);
 
 
     function generateRandomPin() {
@@ -114,6 +118,7 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
             cell: row => (
                 <button onClick={() => {
                     setPinToEdit(row);
+                    console.log(row);
                     setExpirationEnabled(!!row.expiresAt);
                     setModalType("editPin");
                     setModalOpen(true);
@@ -133,7 +138,8 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
             name: 'Partager',
             cell: row => (
                 <button onClick={() => {
-                    const pinUrl = `${window.location.origin}/pin/${file.uuid}/${file.name}`;
+                    //const pinUrl = `${window.location.origin}/pin/${file.uuid}/${file.name}`;
+                    const pinUrl = `${window.location.origin}${row.linkPath}`;
                     navigator.clipboard.writeText(pinUrl)
                         .then(() => toast("info","Lien copié dans le presse-papiers !"))
                         .catch(err => console.error("Erreur lors de la copie : ", err));
@@ -226,6 +232,8 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
 
         const formData = new FormData(e.target);
         const payload = Object.fromEntries(formData.entries());
+        console.log(payload);
+        payload.maxDevices = payload.devices ? parseInt(payload.devices, 10) : 3;
 
         if (!expirationEnabled) payload.expiresAt = null;
         else if (payload.expiresAt) payload.expiresAt = new Date(payload.expiresAt).toISOString();
@@ -266,7 +274,6 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
         }
     };
 
-
     const handleDeletePin = async () => {
         try {
             const response = await fetch(`/api/files/delete/Pin/${file.uuid}/${file.name}/${pinToDelete.pin}`, {
@@ -299,19 +306,28 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
         const newPin = generateRandomPin();
         setDefaultPin(newPin);
         if (pinInputRef.current) {
-            pinInputRef.current.value = newPin; // update directement le DOM
+            pinInputRef.current.value = newPin;
         }
     };
 
 
-    const updateFilePins = (updatedFile) => {
+    /*const updateFilePins = (updatedFile) => {
         setFile(updatedFile);
         setPinsByFile(prev => ({
             ...prev,
             [updatedFile.uuid]: updatedFile.pins
         }));
         setPinData(updatedFile.pins);
-    };
+    };*/
+
+    const downloadLink = (url) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name; // nom du fichier pour le téléchargement
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 
     useEffect(() => {
         if (file) {
@@ -325,7 +341,7 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
             <FontAwesomeIcon icon={faCircleLeft} id="arrow" onClick={return2main} />
             <div className="file-controller">
                 <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem' }}><FontAwesomeIcon icon={icon} />{file.name}</h2>
-                <div><a href={`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}><FontAwesomeIcon icon={faDownload} /></a><FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} /></div>
+                <div style={{ display: "flex", gap: "10px", padding: "10px" }}><FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`)} style={{ cursor: "pointer" }} /><FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} /><FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} /></div>
                 {file.fileTypeName === "Image" ? (
                     <>
                         <img
@@ -450,6 +466,13 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
                             cursor: "pointer"
                         }} /></p>
                         <p><textarea name="note" placeholder="Commentaire"></textarea></p>
+                        <p style={{ position: "relative", display: "inline-block", margin: "0" }}>
+                            <span title="Nombre d'appareils maximum" ><FontAwesomeIcon icon={faMobileScreenButton} style={{
+                                position: "fixed",
+                                paddingLeft: "5px",
+                                transform: "translateY(33%)",
+                            }}></FontAwesomeIcon></span><input name="maxDevices" type="number" placeholder="MaxDevices" required defaultValue={defaultDevicesNumber} ref={deviceInputRef} style={{ paddingLeft: "30px" }} />
+                        </p>
                         <p>
                             <label>
                                 <input
@@ -485,6 +508,14 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
                                 placeholder="Commentaire"
                                 defaultValue={pinToEdit.note || ""}
                             />
+                        </p>
+
+                        <p style={{ position: "relative", display: "inline-block", margin: "0" }}>
+                            <span title="Nombre d'appareils maximum" ><FontAwesomeIcon icon={faMobileScreenButton} style={{
+                                position: "fixed",
+                                paddingLeft: "5px",
+                                transform: "translateY(33%)",
+                            }}></FontAwesomeIcon></span><input name="devices" type="number" defaultValue={pinToEdit.maxDevices} style={{ paddingLeft: "30px" }} />
                         </p>
 
                         <p>
