@@ -394,8 +394,9 @@ namespace Jellyfile.Server.Controllers
         {
             var dbFile = await _db.Files
                 .Include(f => f.Owners)
-                .ThenInclude(fo => fo.User)
+                  .ThenInclude(fo => fo.User)
                 .Include(f => f.Pins)
+                  .ThenInclude(p => p.FailedFingerprints)
                 .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
 
             if (dbFile == null)
@@ -422,7 +423,7 @@ namespace Jellyfile.Server.Controllers
             // Vérification du PIN et fingerprint
             FilePin? filePin = null;
             if (!string.IsNullOrEmpty(pin) || !string.IsNullOrEmpty(accessToken))
-                filePin = await ValidateFilePin(dbFile, pin, accessToken, fp);
+                filePin = await ValidateFilePin(dbFile, pin, accessToken, fp, true);
 
             if (!isCreator && !hasAuthAccess && !isPublic && filePin == null && !isAdmin)
             {
@@ -732,11 +733,9 @@ namespace Jellyfile.Server.Controllers
             .Include(f => f.Owners)
             .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
 
-        Console.WriteLine("before ValidateFilePin");
-        var filePin = await ValidateFilePin(dbFile, dto.Pin, dto.AccessToken, dto.Fingerprint);
+        var filePin = await ValidateFilePin(dbFile, dto.Pin, dto.AccessToken, dto.Fingerprint, false);
         if (filePin == null)
             return StatusCode(403, new { message = "PIN invalide ou accès bloqué" });
-        Console.WriteLine("after ValidateFilePin");
 
         if (dbFile == null)
             return StatusCode(403, new { message = "PIN invalide" });
@@ -797,7 +796,7 @@ namespace Jellyfile.Server.Controllers
                 .Substring(0, 16); // 16 caractères, suffisant
         }
 
-        private async Task<FilePin?> ValidateFilePin(DbFile dbFile, string? pin, string? accessToken, string? fingerprint)
+        private async Task<FilePin?> ValidateFilePin(DbFile dbFile, string? pin, string? accessToken, string? fingerprint, bool countEveryFailure)
         {
             const int MAX_FP_FAILS = 7;
 
@@ -845,16 +844,30 @@ namespace Jellyfile.Server.Controllers
                         Fingerprint = fingerprint,
                         FailCount = 1
                     });
+
                     matchingPin.FailedDevices++;
                 }
                 else
                 {
-                    failedFp.FailCount++;
+                    if (failedFp.FailCount == 0)
+                    {
+                        failedFp.FailCount = 1;
+                        matchingPin.FailedDevices++;
+                    }
+                    else
+                    {
+                        failedFp.FailCount++;
+                        if (countEveryFailure)
+                        {
+                            matchingPin.FailedDevices++;
+                        }
+                    }
                 }
 
                 await _db.SaveChangesAsync();
                 return null;
             }
+
 
             // PIN valide -> reset fingerprint
             if (failedFp != null && failedFp.FailCount > 0)
@@ -864,8 +877,6 @@ namespace Jellyfile.Server.Controllers
                     matchingPin.FailedDevices--;
                 await _db.SaveChangesAsync();
             }
-
-            Console.WriteLine(matchingPin);
 
             return matchingPin;
         }
