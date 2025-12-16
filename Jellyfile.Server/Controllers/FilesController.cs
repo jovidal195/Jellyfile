@@ -1,14 +1,15 @@
 ﻿using Jellyfile.Server.Infrastructure;
 using Jellyfile.Server.Models;
-using DbFile = Jellyfile.Server.Models.File;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic.FileIO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
+using System;
 using System.Security.Cryptography;
 using System.Text.Json;
+using DbFile = Jellyfile.Server.Models.File;
 
 namespace Jellyfile.Server.Controllers
 {
@@ -112,6 +113,7 @@ namespace Jellyfile.Server.Controllers
             var fullPath = Path.Combine(userRootPath, dbUser.Username, fileName);
 
             var poidsFichier = file.Length;
+            var isAvatar = false;
 
             var permissionsLevel = PermissionLevel.AuthUser;
 
@@ -133,6 +135,7 @@ namespace Jellyfile.Server.Controllers
                         var fileInfo = new FileInfo(fullPath);
                         poidsFichier = fileInfo.Length;
                         permissionsLevel = PermissionLevel.Public;
+                        isAvatar = true;
                         break;
 
                     // Ajouter d'autres cas de compression si besoin
@@ -161,7 +164,8 @@ namespace Jellyfile.Server.Controllers
                 CreatedById = dbUser.Id,
                 StorageNode = "local",
                 Hash = hash,
-                Uuid = fileGuid.ToString()
+                Uuid = fileGuid.ToString(),
+                IsAvatar = isAvatar
             };
 
             _db.Files.Add(dbFile);
@@ -197,7 +201,8 @@ namespace Jellyfile.Server.Controllers
                 dbFile.SizeBytes,
                 FileTypeName = fileType?.Name,
                 dbFile.CreatedAt,
-                dbFile.Uuid
+                dbFile.Uuid,
+                isAvatar = dbFile.IsAvatar
             });
 
         }
@@ -222,170 +227,166 @@ namespace Jellyfile.Server.Controllers
             // =================================================================
 
             if (user.Role == "Admin")
+                return Ok(await BuildAdminTree());
+
+            return Ok(await BuildUserTree(user));
+        }
+
+        private async Task<object> BuildUserTree(User user)
+        {
+            var myFiles = await _db.Files
+                .Where(f => f.CreatedById == user.Id)
+                .Include(f => f.FileType)
+                .Include(f => f.Pins)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var sharedFiles = await _db.FileOwners
+                .Where(fo => fo.UserId == user.Id)
+                .Include(fo => fo.File)
+                    .ThenInclude(f => f.FileType)
+                .Include(fo => fo.File)
+                    .ThenInclude(f => f.CreatedBy)
+                .AsNoTracking()
+                .Select(fo => fo.File)
+                .Where(f => f.CreatedById != user.Id)
+                .ToListAsync();
+
+            var tree = new List<object>();
+
+            var myRoot = BuildFolder("Mes fichiers", myFiles);
+            if (myRoot != null)
+                tree.Add(myRoot);
+
+            if (sharedFiles.Any())
             {
-                // Admin : un dossier par utilisateur
-                var users = await _db.Users
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                var files = await _db.Files
-                    .Include(f => f.CreatedBy)
-                    .Include(f => f.FileType)
-                    .Include(f => f.Pins)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                var tree = users.Select(u => new
-                {
-                    Name = u.Username,
-                    Files = files
-                        .Where(f => f.CreatedById == u.Id)
-                        .Select(f => new
-                        {
-                            f.Name,
-                            //f.Hash,
-                            f.Uuid,
-                            f.SizeBytes,
-                            f.CreatedAt,
-                            FileTypeName = f.FileType.Name,
-                            Pins = f.Pins
-                                .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                                .Select(p =>
-                                {
-                                    string accessKey;
-                                    try
-                                    {
-                                        accessKey = ComputeAccessKey(f.Id, p.Pin);
-                                    }
-                                    catch
-                                    {
-                                        accessKey = null;
-                                    }
-
-                                    return new
-                                    {
-                                        p.Pin,
-                                        p.ExpiresAt,
-                                        p.Note,
-                                        accessKey,
-                                        linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
-                                        p.MaxDevices
-                                    };
-                                })
-                        })
-                        .ToList()
-                }).ToList();
-
-                return Ok(tree);
+                var sharedRoot = BuildFolder("Shared", sharedFiles, includeOwner: true);
+                if (sharedRoot != null)
+                    tree.Add(sharedRoot);
             }
-            else
+
+            return tree;
+        }
+
+        private async Task<object> BuildAdminTree()
+        {
+            var users = await _db.Users.AsNoTracking().ToListAsync();
+
+            var files = await _db.Files
+                .Include(f => f.FileType)
+                .Include(f => f.Pins)
+                .Include(f => f.CreatedBy)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return users
+                .Select(u => BuildFolder(
+                    u.Username,
+                    files.Where(f => f.CreatedById == u.Id)
+                ))
+                .Where(folder => folder != null)
+                .ToList();
+        }
+
+        private object? BuildFolder(
+            string name,
+            IEnumerable<Jellyfile.Server.Models.File> files,
+            bool includeOwner = false
+        )
+        {
+            var fileList = files.ToList();
+            if (!fileList.Any())
+                return null;
+
+            // fichiers normaux et avatars
+            var regularFiles = fileList.Where(f => !f.IsAvatar).ToList();
+            var avatarFiles = fileList.Where(f => f.IsAvatar).ToList();
+
+            // helper: node "file"
+            object FileNode(Jellyfile.Server.Models.File f) => new
             {
-                var myFiles = await _db.Files
-                    .Where(f => f.CreatedById == userId.Value)
-                    .Include(f => f.FileType)
-                    .Include(f => f.Pins)
-                    .AsNoTracking()
-                    .ToListAsync();
+                Type = "file",
+                IsFolder = false,
+                isAvatar = f.IsAvatar,
+                Name = f.Name,
+                Uuid = f.Uuid,
+                //Path = f.Path,
+                SizeBytes = f.SizeBytes,
+                CreatedAt = f.CreatedAt,
+                FileTypeName = f.FileType.Name,
+                Owner = includeOwner ? f.CreatedBy.Username : null,
+                Pins = f.Pins
+                    .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
+                    .Select(p => {
+                        string accessKey;
+                        try { accessKey = ComputeAccessKey(f.Id, p.Pin); }
+                        catch { accessKey = null; }
 
-                // Fichiers partagés avec lui
-                var sharedFiles = await _db.FileOwners
-                    .Where(fo => fo.UserId == userId.Value)
-                    .Include(fo => fo.File)
-                        .ThenInclude(f => f.FileType)   // <-- inclut le FileType
-                    .Include(fo => fo.File)
-                        .ThenInclude(f => f.CreatedBy) // si tu veux le Owner
-                    .AsNoTracking()
-                    .Select(fo => fo.File)
-                    .Where(f => f.CreatedById != userId.Value)
-                    .ToListAsync();
+                        return new
+                        {
+                            p.Pin,
+                            p.ExpiresAt,
+                            p.Note,
+                            accessKey,
+                            linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
+                            p.MaxDevices
+                        };
+                    })
+            };
 
-                var tree = new List<object>
+            // construire la liste de nodes (fichiers normaux)
+            var nodes = regularFiles.Select(f => (object)FileNode(f)).ToList();
+
+            // si on a des avatars, crée un vrai dossier node contenant les avatars
+            if (avatarFiles.Any())
+            {
+                var avatarChildNodes = avatarFiles.Select(f => (object)FileNode(f)).ToList();
+
+                var avatarFolderNode = new
                 {
-                    new
-                    {
-                        Name = "Mes fichiers",
-                        Files = myFiles
-                        .Select(f => new {
-                            f.Name,
-                            //f.Hash,
-                            f.Uuid,
-                            f.Path,
-                            f.SizeBytes,
-                            f.CreatedAt,
-                            FileTypeName = f.FileType.Name,
-                            Pins = f.Pins
-                                .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                                .Select(p =>
-    {
-                                    string accessKey;
-                                    try
-                                    {
-                                        accessKey = ComputeAccessKey(f.Id, p.Pin);
-                                    }
-                                    catch
-                                    {
-                                        accessKey = null;
-                                    }
-
-                                    return new
-                                    {
-                                        p.Pin,
-                                        p.ExpiresAt,
-                                        p.Note,
-                                        accessKey,
-                                        linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
-                                        p.MaxDevices
-                                    };
-                                })
-                        }).ToList()
-                    },
+                    Type = "folder",
+                    IsFolder = true,
+                    Name = "Avatars",
+                    Files = avatarChildNodes,
+                    Count = avatarChildNodes.Count
                 };
 
-                if (sharedFiles.Any())
-                {
-                    tree.Add(new
-                    {
-                        Name = "Shared",
-                        Files = sharedFiles
-                        .Select(f => new {
-                            f.Name,
-                            //f.Hash,
-                            f.Uuid,
-                            f.Path,
-                            f.SizeBytes,
-                            f.CreatedAt,
-                            FileTypeName = f.FileType.Name,
-                            Owner = f.CreatedBy.Username,
-                            Pins = f.Pins
-                                .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                                .Select(p =>
-                                {
-                                    string accessKey;
-                                    try
-                                    {
-                                        accessKey = ComputeAccessKey(f.Id, p.Pin);
-                                    }
-                                    catch
-                                    {
-                                        accessKey = null;
-                                    }
-
-                                    return new
-                                    {
-                                        p.Pin,
-                                        p.ExpiresAt,
-                                        p.Note,
-                                        accessKey,
-                                        linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
-                                        p.MaxDevices
-                                    };
-                                })
-                        }).ToList()
-                    });
-                }
-
-                return Ok(tree);
+                // Insère le dossier "Avatars" à la fin (ou change l'index si tu veux qu'il soit avant)
+                nodes.Add(avatarFolderNode);
             }
+
+            return new
+            {
+                Name = name,
+                Files = nodes
+            };
+        }
+
+        [HttpPost("setAvatar/{uuid}/{fileName}")]
+        public async Task<IActionResult> SetAvatar(string uuid, string fileName)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var dbUser = await _db.Users
+                .Include(u => u.Profile)
+                .FirstOrDefaultAsync(u => u.Id == sessionUserId);
+
+            if (dbUser == null)
+                return NotFound(new { message = "Utilisateur introuvable" });
+
+            // Trouver le fichier par UUID et nom
+            var dbFile = await _db.Files
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (dbFile == null)
+                return NotFound(new { message = "Fichier introuvable" });
+
+            dbUser.Profile.Avatar = dbFile.Id;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Avatar mis à jour" });
         }
 
         [HttpGet("{uuid}/{fileName}")]

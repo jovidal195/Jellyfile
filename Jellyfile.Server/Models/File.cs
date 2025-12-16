@@ -24,6 +24,8 @@ namespace Jellyfile.Server.Models
 
         public string StorageNode { get; set; } // pour indiquer le serveur ou noeud de stockage si plusieurs serveurs
 
+        public bool IsAvatar { get; set; }
+
         public ICollection<FileOwner> Owners { get; set; } = new List<FileOwner>();
         public ICollection<FilePin> Pins { get; set; } = new List<FilePin>();
     }

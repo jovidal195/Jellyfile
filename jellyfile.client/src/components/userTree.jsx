@@ -26,46 +26,63 @@ function userTree({ user, tree, setFile }) {
         }));
     };
 
-    const renderFiles = (files, parentKey) => {
-        return files.map((f, idx) => {
-            const displayName = f.name.length > 25
-                ? f.name.slice(0, 22) + '...'
-                : f.name;
+    const renderNodes = (nodes, parentKey, depth = 0) => {
+        return nodes.map((n, idx) => {
+            const uniqueKey = `${parentKey}-${n.name}-${idx}`;
 
-            //console.log(f);
+            if (!n.fileTypeName && n.files) {
+                return renderFolder(n, uniqueKey, depth);
+            }
 
-            const icon = fileTypeIcons[f.fileTypeName] || faFile;
-            const uniqueKey = `${parentKey}-${f.name}-${idx}`;
+            const displayName =
+                n.name.length > 25
+                    ? n.name.slice(0, 25 - 3) + "..."
+                    : n.name;
+
+            const icon = fileTypeIcons[n.fileTypeName] || faFile;
 
             return (
-                <div key={uniqueKey} className="file-item" style={{ paddingLeft: "10px" }} onClick={() => displayFilePage(f, setFile)    }>
+                <div
+                    key={uniqueKey}
+                    className="file-item"
+                    style={{ paddingLeft: "10px" }}
+                    onClick={() => displayFilePage(n, setFile)}
+                >
                     <FontAwesomeIcon icon={icon} /> {displayName}
                 </div>
             );
         });
     };
 
-    const renderFolder = (folder, index) => {
-        const folderKey = `${folder.name}-${index}`;
+
+
+    const renderFolder = (folder, key, depth = 0) => {
+        const folderKey = `${key}-${folder.name}`;
         const isOpen = openFolders[folderKey] ?? true;
 
         return (
             <div key={folderKey} className="folder">
-                <div className="clickable-tree folder-tree" onClick={() => toggleFolder(folderKey)}>
+                <div
+                    className="clickable-tree folder-tree"
+                    style={{ paddingLeft: depth > 0 ? "13px" : "0px" }}
+                    onClick={() => toggleFolder(folderKey)}
+                >
                     <FontAwesomeIcon icon={isOpen ? faFolderOpen : faFolder} /> {folder.name}
                 </div>
+
                 {isOpen && folder.files && folder.files.length > 0 && (
                     <div className="clickable-tree file-tree">
-                        {renderFiles(folder.files)}
+                        {renderNodes(folder.files, folderKey, depth + 1)}
                     </div>
                 )}
             </div>
         );
     };
 
+
     return (
         <div className="left-box">
-            {tree.map((folder, idx) => renderFolder(folder, idx))}
+            {tree.map((folder, idx) => renderFolder(folder, idx, 0))}
         </div>
     );
 }

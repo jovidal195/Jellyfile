@@ -18,7 +18,7 @@ function ExternalPreviewPage() {
 
         const fetchFile = async () => {
             const fp = await getDeviceFingerprint();
-            console.log(`/api/files/${uuid}/${fileName}?pin=${pin}&accessToken=${accesstoken}&fp=${fp}`);
+            //console.log(`/api/files/${uuid}/${fileName}?pin=${pin}&accessToken=${accesstoken}&fp=${fp}`);
             const res = await fetch(`/api/files/${uuid}/${fileName}?pin=${pin}&accessToken=${accesstoken}&fp=${fp}`);
             if (!res.ok) {
                 setError("Impossible de récupérer le fichier");

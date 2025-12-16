@@ -11,7 +11,7 @@ import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
 import Select from 'react-select';
 
-function FileViewer({ file, reloadTree, return2main, setFile }) {
+function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink }) {
     const toast = useToast();
     const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
@@ -158,6 +158,7 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
 
             if (response.ok) {
                 toast("success", "Fichier supprimé");
+                setavatarLink(`/api/files/avatar/${user.username}?t=${Date.now()}`);
                 return2main();
                 reloadTree();
             } else if (response.status === 403) {
@@ -310,7 +311,33 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
         }
     };
 
+    const setAvatar = async (file) => {
+        console.log(file);
 
+        try {
+            const response = await fetch(`/api/files/setAvatar/${file.uuid}/${file.name}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                toast("success", "Avatar selectionné");
+                setavatarLink(`/api/files/avatar/${user.username}?t=${Date.now()}`);
+                setModalOpen(false);
+            } else if (response.status === 403) {
+                toast("error", "Accès refusé");
+            } else if (response.status === 401) {
+                toast("error", "Session expirée");
+            } else {
+                toast("error", data.message || "Erreur lors de la création du PIN");
+            }
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur réseau ou serveur");
+        }
+    }
     /*const updateFilePins = (updatedFile) => {
         setFile(updatedFile);
         setPinsByFile(prev => ({
@@ -344,6 +371,9 @@ function FileViewer({ file, reloadTree, return2main, setFile }) {
                 <div style={{ display: "flex", gap: "10px", padding: "10px" }}><FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`)} style={{ cursor: "pointer" }} /><FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} /><FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} /></div>
                 {file.fileTypeName === "Image" ? (
                     <>
+                        {file.isAvatar ? (
+                            <div><button style={{ padding: "7px", fontSize: "0.85em", margin: "5px" }} onClick={() => setAvatar(file)}>activer l'avatar</button></div>
+                        ) : null}
                         <img
                             key={file.hash}
                             src={`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
