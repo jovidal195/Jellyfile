@@ -111,7 +111,15 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         },
         {
             name: 'Expiration',
-            selector: row => row.expiresAt,
+            selector: row => {
+                if (!row.expiresAt) return '';
+                const utcDate = new Date(row.expiresAt); // ISO UTC depuis la DB
+                // transforme en heure locale
+                const localDate = new Date(
+                    utcDate.getTime() - utcDate.getTimezoneOffset() * 60000
+                );
+                return localDate.toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' });
+            }
         },
         {
             name: 'Modifier',
@@ -147,6 +155,20 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             )
         }
     ];
+
+    const normalizePin = (pin) => {
+        if (!pin.expiresAt) return pin;
+
+        // Supprime juste le Z à la fin, si présent
+        const expiresAt = pin.expiresAt.endsWith('Z')
+            ? pin.expiresAt.slice(0, -1)
+            : pin.expiresAt;
+
+        return {
+            ...pin,
+            expiresAt
+        };
+    };
 
     const deleteFile = async () => {
         setModalOpen(false); // fermer le modal
@@ -187,9 +209,8 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
 
         const payload = Object.fromEntries(formData.entries());
 
-        // Si expiresAt existe, le form envoie une string, on la convertit en ISO
         if (payload.expiresAt) {
-            payload.expiresAt = new Date(payload.expiresAt).toISOString();
+            payload.expiresAt = new Date(payload.expiresAt)
         } else {
             payload.expiresAt = null;
         }
@@ -202,16 +223,19 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             });
 
             const data = await response.json();
-            console.log(response);
-            console.log(data);
         
             if (response.ok) {
                 toast("success", "Pin créé");
-                setPinData(prev => [...prev, data]);
-                setFile(prev => ({ ...prev, pins: [...prev.pins, data] }));
+
+                const normalized = normalizePin(data);
+
+                setPinData(prev => [...prev, normalized]);
+                console.log(pinData);
+                setFile(prev => ({ ...prev, pins: [...prev.pins, normalized] }));
+                console.log(File);
                 setPinsByFile(prev => ({
                     ...prev,
-                    [file.uuid]: [...(prev[file.uuid] || file.pins), data]
+                    [file.uuid]: [...(prev[file.uuid] || file.pins), normalized]
                 }));
 
                 setModalOpen(false);
@@ -237,7 +261,9 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         payload.maxDevices = payload.devices ? parseInt(payload.devices, 10) : 3;
 
         if (!expirationEnabled) payload.expiresAt = null;
-        else if (payload.expiresAt) payload.expiresAt = new Date(payload.expiresAt).toISOString();
+        else if (payload.expiresAt) payload.expiresAt = expirationEnabled
+            ? new Date(payload.expiresAt)
+            : null;
 
         try {
             const response = await fetch(`/api/files/update/Pin/${file.uuid}/${file.name}/${pinToEdit.pin}`, {
@@ -249,18 +275,20 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             const data = await response.json();
 
             if (response.ok) {
+                const normalized = normalizePin(data);
+
                 setPinData(prev =>
-                    prev.map(p => (p.pin === pinToEdit.pin ? data : p))
+                    prev.map(p => (p.pin === pinToEdit.pin ? normalized : p))
                 );
                 setFile(prev => ({
                     ...prev,
-                    pins: prev.pins.map(p => p.pin === pinToEdit.pin ? data : p)
+                    pins: prev.pins.map(p => p.pin === pinToEdit.pin ? normalized : p)
                 }));
 
 
                 setPinsByFile(prev => ({
                     ...prev,
-                    [file.uuid]: (prev[file.uuid] || file.pins).map(p => p.pin === pinToEdit.pin ? data : p)
+                    [file.uuid]: (prev[file.uuid] || file.pins).map(p => p.pin === pinToEdit.pin ? normalized : p)
                 }));
 
                 setModalOpen(false);
@@ -361,7 +389,6 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             setPinData(pinsByFile[file.uuid] || file.pins);
         }
     }, [file]);
-
 
     return (
         <div className="file-viewer submenus">
@@ -566,10 +593,22 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                                     type="datetime-local"
                                     defaultValue={
                                         pinToEdit.expiresAt
-                                            ? new Date(pinToEdit.expiresAt).toISOString().slice(0, 16)
+                                            ? (() => {
+                                                const utcDate = new Date(pinToEdit.expiresAt);
+                                                const localDate = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000);
+
+                                                const yyyy = localDate.getFullYear();
+                                                const mm = String(localDate.getMonth() + 1).padStart(2, '0');
+                                                const dd = String(localDate.getDate()).padStart(2, '0');
+                                                const hh = String(localDate.getHours()).padStart(2, '0');
+                                                const min = String(localDate.getMinutes()).padStart(2, '0');
+
+                                                return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+                                            })()
                                             : ""
                                     }
                                 />
+
                             </p>
                         )}
 
