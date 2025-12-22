@@ -1,11 +1,13 @@
 ﻿import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt } from '@fortawesome/free-solid-svg-icons';
+import { faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faFolderPlus } from '@fortawesome/free-solid-svg-icons';
 import './userTree.css';
 import { displayFilePage } from "../utils/displayFilePage.js";
+import { useToast } from "./ToastProvider";
 
-function userTree({ user, tree, setFile }) {
+function userTree({ user, tree, setFile, reloadTree }) {
     const [openFolders, setOpenFolders] = useState({}); // key: folderKey, value: boolean
+    const toast = useToast();
 
     const fileTypeIcons = {
         "Autre": faFile,
@@ -54,6 +56,43 @@ function userTree({ user, tree, setFile }) {
         });
     };
 
+    const handleAddFolder = async (currentRoot) => {
+        console.log("currentRoot :", currentRoot);
+        console.log("Root courant :", currentRoot.name, "ID:", currentRoot.uuid);
+
+        const name = prompt("Nom du nouveau dossier :");
+        if (!name) return;
+
+        try {
+            const res = await fetch("/api/folders/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name,
+                    ParentFolderUuid: currentRoot.uuid || null
+                })
+            });
+
+            if (!res.ok) {
+                let errorText;
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorJson = await res.json();
+                    errorText = errorJson.message || "Erreur création dossier";
+                } else {
+                    errorText = await res.text();
+                }
+                toast("error", errorText);
+                return;
+            }
+
+
+            reloadTree();
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur inattendue lors de la création du dossier"); // ton toast
+        }
+    };
 
 
     const renderFolder = (folder, key, depth = 0) => {
@@ -65,9 +104,19 @@ function userTree({ user, tree, setFile }) {
                 <div
                     className="clickable-tree folder-tree"
                     style={{ paddingLeft: depth > 0 ? "13px" : "0px" }}
-                    onClick={() => toggleFolder(folderKey)}
+                    onClick={() => {
+                        toggleFolder(folderKey);
+                        }
+                    }
                 >
-                    <FontAwesomeIcon icon={isOpen ? faFolderOpen : faFolder} /> {folder.name}
+                    <FontAwesomeIcon icon={isOpen ? faFolderOpen : faFolder} style={{ color: "var(--login-button-hover)"}} /> {folder.name}
+                    {depth === 0 && folder.name !== "Shared" && (
+                        <FontAwesomeIcon
+                            icon={faFolderPlus}
+                            style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}
+                            onClick={(e) => { e.stopPropagation(); handleAddFolder(folder); }}
+                        />
+                    )}
                 </div>
 
                 {isOpen && folder.files && folder.files.length > 0 && (

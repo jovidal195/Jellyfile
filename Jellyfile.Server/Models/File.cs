@@ -19,6 +19,9 @@ namespace Jellyfile.Server.Models
         public bool IsActive { get; set; } = true; // soft delete
         public DateTime? ExpirationAt { get; set; } // nullable pour fichiers sans expiration
 
+        public int? ParentFolderId { get; set; }  // null si root
+        public Folder ParentFolder { get; set; }
+
         public int FileTypeId { get; set; }
         public FileType FileType { get; set; }
 

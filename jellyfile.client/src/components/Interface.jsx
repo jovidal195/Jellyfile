@@ -136,11 +136,11 @@ export default function Interface({ toggleTheme, theme }) {
                     ))}
             </header>
             <div className="content">
-                <UserTree user={user} tree={tree} setFile={setFile} />
+                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} />
                 <div className="right-box">
                     <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} setavatarLink={setavatarLink} />
-                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} />
-                    <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree}/>
+                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} />
+                    <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree} />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />
                     )}

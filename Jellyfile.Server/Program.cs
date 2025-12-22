@@ -139,6 +139,19 @@ internal class Program
                 admin.PasswordHash = hasher.HashPassword(admin, "password");
                 db.Users.Add(admin);
                 db.SaveChanges();
+
+                // --- CRÉER LE FOLDER ROOT POUR ADMIN ---
+                var adminRootFolder = new Folder
+                {
+                    Name = "Fichiers admins",
+                    OwnerId = admin.Id,
+                    Uuid = Guid.NewGuid().ToString(),
+                    ParentFolderId = null, // root
+                    SubFolders = new List<Folder>(),
+                    Files = new List<Jellyfile.Server.Models.File>()
+                };
+                db.Folders.Add(adminRootFolder);
+                db.SaveChanges();
             }
 
             FileTypeInitializer.EnsureFileTypesExist(db);

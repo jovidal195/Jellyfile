@@ -96,7 +96,12 @@ namespace Jellyfile.Server.Controllers
             if (await _db.Users.AnyAsync(u => u.Username == req.Username))
                 return Conflict("Utilisateur existant");
 
-            var user = new User { Username = req.Username, StorageQuotaBytes = 1L * 1024 * 1024 * 1024 };
+            var user = new User
+            {
+                Username = req.Username,
+                StorageQuotaBytes = 1L * 1024 * 1024 * 1024
+            };
+
             var randomPassword = Path.GetRandomFileName();
             var hasher = new PasswordHasher<User>();
             user.PasswordHash = hasher.HashPassword(user, randomPassword);
@@ -104,10 +109,23 @@ namespace Jellyfile.Server.Controllers
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
+            // Crée le dossier physique
             _userFolderService.EnsureFolderForUser(user);
+
+            // Crée le root folder en DB
+            var rootFolder = new Folder
+            {
+                Name = user.Username,
+                OwnerId = user.Id,
+                ParentFolderId = null,
+                Uuid = Guid.NewGuid().ToString()
+            };
+            _db.Folders.Add(rootFolder);
+            await _db.SaveChangesAsync();
 
             return Ok(new { Username = user.Username });
         }
+
 
         [Authorize(Policy = "RequireAdmin")]
         [HttpDelete("remove/{id}")]

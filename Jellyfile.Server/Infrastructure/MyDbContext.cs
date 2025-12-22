@@ -21,6 +21,7 @@ namespace Jellyfile.Server.Infrastructure
         public DbSet<FilePin> FilePins { get; set; }
         public DbSet<FailedFingerprint> FailedFingerprints { get; set; }
 
+        public DbSet<Folder> Folders { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -100,6 +101,24 @@ namespace Jellyfile.Server.Infrastructure
                 .WithMany(fp => fp.FailedFingerprints)
                 .HasForeignKey(ff => ff.FilePinId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Folder
+            modelBuilder.Entity<Folder>()
+                .HasOne(f => f.Owner)
+                .WithMany()
+                .HasForeignKey(f => f.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Folder>()
+                .HasOne(f => f.ParentFolder)
+                .WithMany(f => f.SubFolders)
+                .HasForeignKey(f => f.ParentFolderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Folder>()
+                .HasIndex(f => new { f.OwnerId, f.Name, f.ParentFolderId })
+                .IsUnique();
+
 
         }
     }

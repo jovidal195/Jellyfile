@@ -31,7 +31,7 @@ namespace Jellyfile.Server.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFile([FromForm] IFormFile file, [FromForm] string user, [FromForm] string? compress)
+        public async Task<IActionResult> UploadFile([FromForm] IFormFile file, [FromForm] string user, [FromForm] string? compress, [FromForm] string? folderUuid)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "Aucun fichier reçu." });
@@ -153,6 +153,20 @@ namespace Jellyfile.Server.Controllers
                     await file.CopyToAsync(stream);
             }
 
+            Folder? targetFolder = null;
+            if (!string.IsNullOrEmpty(folderUuid))
+            {
+                targetFolder = await _db.Folders
+                    .FirstOrDefaultAsync(f => f.Uuid == folderUuid && f.OwnerId == dbUser.Id);
+            }
+            if (targetFolder == null)
+            {
+                // fallback sur le root folder
+                targetFolder = await _db.Folders
+                    .FirstOrDefaultAsync(f => f.OwnerId == dbUser.Id && f.ParentFolderId == null);
+            }
+
+
             // Création de l’entrée File dans la DB
             var dbFile = new Models.File
             {
@@ -165,7 +179,8 @@ namespace Jellyfile.Server.Controllers
                 StorageNode = "local",
                 Hash = hash,
                 Uuid = fileGuid.ToString(),
-                IsAvatar = isAvatar
+                IsAvatar = isAvatar,
+                ParentFolderId = targetFolder!.Id
             };
 
             _db.Files.Add(dbFile);
@@ -186,6 +201,20 @@ namespace Jellyfile.Server.Controllers
 
             if (!string.IsNullOrEmpty(compress))
             {
+                // S'assure que le profil existe
+                if (dbUser.Profile == null)
+                {
+                    dbUser.Profile = new UserProfile
+                    {
+                        Gender = "Unknown",   // valeur par défaut pour éviter le NOT NULL
+                        FirstName = "",
+                        LastName = ""
+                        // autres colonnes NOT NULL si elles existent
+                    };
+                    _db.UserProfiles.Add(dbUser.Profile);
+                    await _db.SaveChangesAsync();
+                }
+
                 dbUser.Profile.Avatar = dbFile.Id;
                 await _db.SaveChangesAsync();
             }
@@ -234,13 +263,97 @@ namespace Jellyfile.Server.Controllers
 
         private async Task<object> BuildUserTree(User user)
         {
-            var myFiles = await _db.Files
-                .Where(f => f.CreatedById == user.Id)
-                .Include(f => f.FileType)
-                .Include(f => f.Pins)
+            // Récupère tous les dossiers de l'utilisateur
+            var userFolders = await _db.Folders
+                .Where(f => f.OwnerId == user.Id)
+                .Include(f => f.Files)
+                    .ThenInclude(ff => ff.FileType)
+                .Include(f => f.Files)
+                    .ThenInclude(ff => ff.CreatedBy)
                 .AsNoTracking()
                 .ToListAsync();
 
+            // Helper pour créer un node "file"
+            object FileNode(Jellyfile.Server.Models.File f) => new
+            {
+                Type = "file",
+                IsFolder = false,
+                IsAvatar = f.IsAvatar,
+                Name = f.Name,
+                Uuid = f.Uuid,
+                SizeBytes = f.SizeBytes,
+                CreatedAt = f.CreatedAt,
+                FileTypeName = f.FileType?.Name ?? "Autre",
+                Owner = f.CreatedBy?.Username,
+                Pins = f.Pins
+                    .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
+                    .Select(p => {
+                        string accessKey;
+                        try { accessKey = ComputeAccessKey(f.Id, p.Pin); }
+                        catch { accessKey = null; }
+
+                        return new
+                        {
+                            p.Pin,
+                            p.ExpiresAt,
+                            p.Note,
+                            accessKey,
+                            LinkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
+                            p.MaxDevices
+                        };
+                    })
+            };
+
+            var tree = new List<object>();
+
+            // Root "Mes fichiers" : fichiers + subfolders fermés
+            var rootFolder = userFolders.FirstOrDefault(f => f.ParentFolderId == null);
+            if (rootFolder != null)
+            {
+                // Fichiers “normaux” + avatars
+                var normalFiles = rootFolder.Files.Where(f => !f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
+                var avatarFiles = rootFolder.Files.Where(f => f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
+
+                if (avatarFiles.Any())
+                {
+                    normalFiles.Add(new
+                    {
+                        Type = "folder",
+                        IsFolder = true,
+                        Name = "Avatars",
+                        Files = avatarFiles,
+                        Count = avatarFiles.Count,
+                        Uuid = rootFolder.Uuid
+                    });
+                }
+
+                // Subfolders créés : dossiers fermés
+                var subFolders = userFolders
+                    .Where(f => f.ParentFolderId == rootFolder.Id)
+                    .Select(f => new
+                    {
+                        Type = "folder",
+                        IsFolder = true,
+                        f.Name,
+                        f.Uuid,
+                        Files = new List<object>(), // faux dossier pour front
+                        Count = 0
+                    }).ToList();
+
+                normalFiles.AddRange(subFolders);
+
+                tree.Add(new
+                {
+                    Type = "folder",
+                    IsFolder = true,
+                    Name = rootFolder.Name,
+                    Uuid = rootFolder.Uuid,
+                    Files = normalFiles,
+                    Count = normalFiles.Count
+                });
+            }
+
+            // Root "Shared" (inchangé)
             var sharedFiles = await _db.FileOwners
                 .Where(fo => fo.UserId == user.Id)
                 .Include(fo => fo.File)
@@ -252,72 +365,76 @@ namespace Jellyfile.Server.Controllers
                 .Where(f => f.CreatedById != user.Id)
                 .ToListAsync();
 
-            var tree = new List<object>();
-
-            var myRoot = BuildFolder("Mes fichiers", myFiles);
-            if (myRoot != null)
-                tree.Add(myRoot);
-
             if (sharedFiles.Any())
             {
-                var sharedRoot = BuildFolder("Shared", sharedFiles, includeOwner: true);
-                if (sharedRoot != null)
-                    tree.Add(sharedRoot);
+                var sharedNormal = sharedFiles.Where(f => !f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
+                var sharedAvatars = sharedFiles.Where(f => f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
+
+                if (sharedAvatars.Any())
+                {
+                    sharedNormal.Add(new
+                    {
+                        Type = "folder",
+                        IsFolder = true,
+                        Name = "Avatars",
+                        Files = sharedAvatars,
+                        Count = sharedAvatars.Count
+                    });
+                }
+
+                tree.Add(new
+                {
+                    Type = "folder",
+                    IsFolder = true,
+                    Name = "Shared",
+                    Files = sharedNormal,
+                    Count = sharedNormal.Count
+                });
             }
 
             return tree;
         }
 
-        private async Task<object> BuildAdminTree()
+
+
+
+        private async Task<object> BuildFolderRecursive(Folder folder)
         {
-            var users = await _db.Users.AsNoTracking().ToListAsync();
-
-            var files = await _db.Files
-                .Include(f => f.FileType)
-                .Include(f => f.Pins)
-                .Include(f => f.CreatedBy)
-                .AsNoTracking()
-                .ToListAsync();
-
-            return users
-                .Select(u => BuildFolder(
-                    u.Username,
-                    files.Where(f => f.CreatedById == u.Id)
-                ))
-                .Where(folder => folder != null)
-                .ToList();
+            return new
+            {
+                folder.Id,
+                folder.Name,
+                folder.Uuid,
+                SubFolders = await Task.WhenAll(folder.SubFolders.Select(f => BuildFolderRecursive(f))),
+                Files = folder.Files
+                    .Where(f => !f.IsAvatar)
+                    .Select(f => FileNode(f))
+                    .ToList(),
+                Avatars = folder.Files
+                    .Where(f => f.IsAvatar)
+                    .Select(f => FileNode(f))
+                    .ToList()
+            };
         }
 
-        private object? BuildFolder(
-            string name,
-            IEnumerable<Jellyfile.Server.Models.File> files,
-            bool includeOwner = false
-        )
+
+        private object FileNode(Jellyfile.Server.Models.File f)
         {
-            var fileList = files.ToList();
-            if (!fileList.Any())
-                return null;
-
-            // fichiers normaux et avatars
-            var regularFiles = fileList.Where(f => !f.IsAvatar).ToList();
-            var avatarFiles = fileList.Where(f => f.IsAvatar).ToList();
-
-            // helper: node "file"
-            object FileNode(Jellyfile.Server.Models.File f) => new
+            return new
             {
                 Type = "file",
                 IsFolder = false,
                 isAvatar = f.IsAvatar,
                 Name = f.Name,
                 Uuid = f.Uuid,
-                //Path = f.Path,
                 SizeBytes = f.SizeBytes,
                 CreatedAt = f.CreatedAt,
-                FileTypeName = f.FileType.Name,
-                Owner = includeOwner ? f.CreatedBy.Username : null,
+                FileTypeName = f.FileType?.Name ?? "Autre",
+                Owner = f.CreatedBy?.Username,
                 Pins = f.Pins
                     .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                    .Select(p => {
+                    .Select(p =>
+                    {
                         string accessKey;
                         try { accessKey = ComputeAccessKey(f.Id, p.Pin); }
                         catch { accessKey = null; }
@@ -333,34 +450,68 @@ namespace Jellyfile.Server.Controllers
                         };
                     })
             };
+        }
 
-            // construire la liste de nodes (fichiers normaux)
-            var nodes = regularFiles.Select(f => (object)FileNode(f)).ToList();
+        private async Task<object> BuildAdminTree()
+        {
+            var users = await _db.Users.AsNoTracking().ToListAsync();
+            var files = await _db.Files
+                .Include(f => f.FileType)
+                .Include(f => f.Pins)
+                .Include(f => f.CreatedBy)
+                .AsNoTracking()
+                .ToListAsync();
 
-            // si on a des avatars, crée un vrai dossier node contenant les avatars
+            var tree = new List<object>();
+
+            foreach (var u in users)
+            {
+                var userFiles = files.Where(f => f.CreatedById == u.Id);
+                // récupère le root folder en DB
+                var rootFolder = await _db.Folders
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(f => f.OwnerId == u.Id && f.ParentFolderId == null);
+
+                tree.Add(BuildFolder(u.Username, userFiles, rootFolder?.Uuid));
+            }
+
+            return tree;
+        }
+
+
+
+
+        private object? BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string? uuid = null)
+        {
+            var fileList = files.ToList();
+            if (!fileList.Any()) return null;
+
+            var regularFiles = fileList.Where(f => !f.IsAvatar).Select(f => FileNode(f)).ToList();
+            var avatarFiles = fileList.Where(f => f.IsAvatar).Select(f => FileNode(f)).ToList();
+
             if (avatarFiles.Any())
             {
-                var avatarChildNodes = avatarFiles.Select(f => (object)FileNode(f)).ToList();
-
-                var avatarFolderNode = new
+                regularFiles.Add(new
                 {
                     Type = "folder",
                     IsFolder = true,
                     Name = "Avatars",
-                    Files = avatarChildNodes,
-                    Count = avatarChildNodes.Count
-                };
-
-                // Insère le dossier "Avatars" à la fin (ou change l'index si tu veux qu'il soit avant)
-                nodes.Add(avatarFolderNode);
+                    Files = avatarFiles,
+                    Count = avatarFiles.Count,
+                    Uuid = uuid
+                });
             }
 
             return new
             {
                 Name = name,
-                Files = nodes
+                Files = regularFiles,
+                Uuid = uuid
             };
         }
+
+
+
 
         [HttpPost("setAvatar/{uuid}/{fileName}")]
         public async Task<IActionResult> SetAvatar(string uuid, string fileName)

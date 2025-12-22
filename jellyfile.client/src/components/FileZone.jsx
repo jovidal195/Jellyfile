@@ -4,7 +4,7 @@ import './FileZone.css';
 import Modal from "./Modal";
 import { displayFilePage } from "../utils/displayFilePage.js";
 
-export default function FileZone({ user, reloadTree, setFile }) {
+export default function FileZone({ user, reloadTree, tree, setFile }) {
     const [dragActive, setDragActive] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const inputRef = useRef(null);
@@ -41,6 +41,9 @@ export default function FileZone({ user, reloadTree, setFile }) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("user", JSON.stringify(user));
+        console.log(tree);
+        console.log(tree[0]);
+        formData.append("folderUuid", tree[0].uuid);
         setModalOpen(true);
 
         try {
