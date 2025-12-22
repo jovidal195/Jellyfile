@@ -28,34 +28,6 @@ function userTree({ user, tree, setFile, reloadTree }) {
         }));
     };
 
-    const renderNodes = (nodes, parentKey, depth = 0) => {
-        return nodes.map((n, idx) => {
-            const uniqueKey = `${parentKey}-${n.name}-${idx}`;
-
-            if (!n.fileTypeName && n.files) {
-                return renderFolder(n, uniqueKey, depth);
-            }
-
-            const displayName =
-                n.name.length > 25
-                    ? n.name.slice(0, 25 - 3) + "..."
-                    : n.name;
-
-            const icon = fileTypeIcons[n.fileTypeName] || faFile;
-
-            return (
-                <div
-                    key={uniqueKey}
-                    className="file-item"
-                    style={{ paddingLeft: "10px" }}
-                    onClick={() => displayFilePage(n, setFile)}
-                >
-                    <FontAwesomeIcon icon={icon} /> {displayName}
-                </div>
-            );
-        });
-    };
-
     const handleAddFolder = async (currentRoot) => {
         console.log("currentRoot :", currentRoot);
         console.log("Root courant :", currentRoot.name, "ID:", currentRoot.uuid);
@@ -95,43 +67,75 @@ function userTree({ user, tree, setFile, reloadTree }) {
     };
 
 
-    const renderFolder = (folder, key, depth = 0) => {
-        const folderKey = `${key}-${folder.name}`;
-        const isOpen = openFolders[folderKey] ?? true;
+    const renderNode = (node, key, depth = 0) => {
+        const nodeKey = `${key}-${node.name}`;
+        const truncatedName = node.name.length > 21 ? node.name.slice(0, 18) + "..." : node.name;
 
-        return (
-            <div key={folderKey} className="folder">
-                <div
-                    className="clickable-tree folder-tree"
-                    style={{ paddingLeft: depth > 0 ? "13px" : "0px" }}
-                    onClick={() => {
-                        toggleFolder(folderKey);
-                        }
-                    }
-                >
-                    <FontAwesomeIcon icon={isOpen ? faFolderOpen : faFolder} style={{ color: "var(--login-button-hover)"}} /> {folder.name}
-                    {depth === 0 && folder.name !== "Shared" && (
-                        <FontAwesomeIcon
-                            icon={faFolderPlus}
-                            style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}
-                            onClick={(e) => { e.stopPropagation(); handleAddFolder(folder); }}
-                        />
+        if (node.type === "folder") {
+            const isOpen = openFolders[nodeKey] ?? true;
+
+            return (
+                <div key={nodeKey} className="folder">
+                    <div
+                        className="clickable-tree folder-tree"
+                        style={{ paddingLeft: depth > 0 ? "20px" : "0px" }}
+                        onClick={() => toggleFolder(nodeKey)}
+                    >
+                        <FontAwesomeIcon icon={isOpen ? faFolderOpen : faFolder} style={{ color: "var(--login-button-hover)" }} />{" "}
+                        {truncatedName}
+                        {depth === 0 && node.name !== "Shared" && (
+                            <FontAwesomeIcon
+                                icon={faFolderPlus}
+                                style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}
+                                onClick={(e) => { e.stopPropagation(); handleAddFolder(node); }}
+                            />
+                        )}
+                    </div>
+                    {isOpen && node.files && node.files.length > 0 && (
+                        <div className="clickable-tree file-tree">
+                            {node.files.map((child, idx) => renderNode(child, `${nodeKey}-${idx}`, depth + 1))}
+                        </div>
                     )}
                 </div>
+            );
+        }
 
-                {isOpen && folder.files && folder.files.length > 0 && (
-                    <div className="clickable-tree file-tree">
-                        {renderNodes(folder.files, folderKey, depth + 1)}
-                    </div>
-                )}
-            </div>
-        );
+        if (node.type === "file") {
+            const icon = fileTypeIcons[node.fileTypeName] || faFile;
+
+            return (
+                <div
+                    key={nodeKey}
+                    className="file clickable-tree"
+                    style={{ paddingLeft: depth > 0 ? "20px" : "0px" }}
+                    onClick={() => displayFilePage(node, setFile)}
+                >
+                    <FontAwesomeIcon icon={icon} /> {truncatedName}
+                </div>
+            );
+        }
+
+        if (node.type === "rootLink") {
+            return (
+                <div
+                    key={nodeKey}
+                    className="root-link clickable-tree"
+                    style={{ paddingLeft: depth > 0 ? "20px" : "0px" }}
+                    onClick={() => toast("info", "Fonctionnalité pas encore implémentée")}
+                >
+                    <FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {truncatedName}
+                </div>
+            );
+        }
+
+        return null;
     };
+
 
 
     return (
         <div className="left-box">
-            {tree.map((folder, idx) => renderFolder(folder, idx, 0))}
+            {tree.map((folder, idx) => renderNode(folder, idx, 0))}
         </div>
     );
 }

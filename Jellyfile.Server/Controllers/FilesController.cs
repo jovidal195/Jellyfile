@@ -328,19 +328,18 @@ namespace Jellyfile.Server.Controllers
                 }
 
                 // Subfolders créés : dossiers fermés
-                var subFolders = userFolders
+                var subFolderLinks = userFolders
                     .Where(f => f.ParentFolderId == rootFolder.Id)
                     .Select(f => new
                     {
-                        Type = "folder",
-                        IsFolder = true,
-                        f.Name,
-                        f.Uuid,
-                        Files = new List<object>(), // faux dossier pour front
+                        Type = "rootLink", // nouveau type
+                        Name = f.Name,
+                        Uuid = f.Uuid,
+                        Files = new List<object>(),
                         Count = 0
                     }).ToList();
 
-                normalFiles.AddRange(subFolders);
+                normalFiles.AddRange(subFolderLinks);
 
                 tree.Add(new
                 {
@@ -462,17 +461,63 @@ namespace Jellyfile.Server.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
+            var folders = await _db.Folders
+                .Include(f => f.Files)
+                    .ThenInclude(ff => ff.FileType)
+                .Include(f => f.Files)
+                    .ThenInclude(ff => ff.CreatedBy)
+                .AsNoTracking()
+                .ToListAsync();
+
             var tree = new List<object>();
 
             foreach (var u in users)
             {
                 var userFiles = files.Where(f => f.CreatedById == u.Id);
-                // récupère le root folder en DB
-                var rootFolder = await _db.Folders
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(f => f.OwnerId == u.Id && f.ParentFolderId == null);
+                var userFolders = folders.Where(f => f.OwnerId == u.Id).ToList();
+                var rootFolder = userFolders.FirstOrDefault(f => f.ParentFolderId == null);
 
-                tree.Add(BuildFolder(u.Username, userFiles, rootFolder?.Uuid));
+                if (rootFolder == null)
+                    continue;
+
+                var normalFiles = rootFolder.Files.Where(f => !f.IsAvatar).Select(f => FileNode(f)).ToList();
+                var avatarFiles = rootFolder.Files.Where(f => f.IsAvatar).Select(f => FileNode(f)).ToList();
+
+                if (avatarFiles.Any())
+                {
+                    normalFiles.Add(new
+                    {
+                        Type = "folder",
+                        IsFolder = true,
+                        Name = "Avatars",
+                        Files = avatarFiles,
+                        Count = avatarFiles.Count,
+                        Uuid = rootFolder.Uuid
+                    });
+                }
+
+                // subfolders comme “rootLink”
+                var subFolderLinks = userFolders
+                    .Where(f => f.ParentFolderId == rootFolder.Id)
+                    .Select(f => new
+                    {
+                        Type = "rootLink",
+                        Name = f.Name,
+                        Uuid = f.Uuid,
+                        Files = new List<object>(),
+                        Count = 0
+                    }).ToList();
+
+                normalFiles.AddRange(subFolderLinks);
+
+                tree.Add(new
+                {
+                    Type = "folder",
+                    Name = u.Username,
+                    Uuid = rootFolder.Uuid,
+                    Files = normalFiles,
+                    Count = normalFiles.Count
+                });
             }
 
             return tree;
@@ -481,14 +526,18 @@ namespace Jellyfile.Server.Controllers
 
 
 
-        private object? BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string? uuid = null)
+
+        private object BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string rootUuid)
         {
             var fileList = files.ToList();
-            if (!fileList.Any()) return null;
+            if (!fileList.Any() && string.IsNullOrEmpty(rootUuid))
+                return null;
 
+            // Fichiers normaux
             var regularFiles = fileList.Where(f => !f.IsAvatar).Select(f => FileNode(f)).ToList();
             var avatarFiles = fileList.Where(f => f.IsAvatar).Select(f => FileNode(f)).ToList();
 
+            // Sous-dossier pour avatars si nécessaire
             if (avatarFiles.Any())
             {
                 regularFiles.Add(new
@@ -497,8 +546,18 @@ namespace Jellyfile.Server.Controllers
                     IsFolder = true,
                     Name = "Avatars",
                     Files = avatarFiles,
-                    Count = avatarFiles.Count,
-                    Uuid = uuid
+                    Count = avatarFiles.Count
+                });
+            }
+
+            // Si rootUuid fourni, crée un "rootLink" pour que le frontend puisse le traiter
+            if (!string.IsNullOrEmpty(rootUuid))
+            {
+                regularFiles.Insert(0, new
+                {
+                    Type = "rootLink",
+                    Name = name,
+                    Uuid = rootUuid
                 });
             }
 
@@ -506,9 +565,10 @@ namespace Jellyfile.Server.Controllers
             {
                 Name = name,
                 Files = regularFiles,
-                Uuid = uuid
+                Uuid = rootUuid
             };
         }
+
 
 
 
