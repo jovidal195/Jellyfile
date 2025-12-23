@@ -273,46 +273,37 @@ namespace Jellyfile.Server.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
-            // Helper pour créer un node "file"
-            object FileNode(Jellyfile.Server.Models.File f) => new
-            {
-                Type = "file",
-                IsFolder = false,
-                IsAvatar = f.IsAvatar,
-                Name = f.Name,
-                Uuid = f.Uuid,
-                SizeBytes = f.SizeBytes,
-                CreatedAt = f.CreatedAt,
-                FileTypeName = f.FileType?.Name ?? "Autre",
-                Owner = f.CreatedBy?.Username,
-                Pins = f.Pins
-                    .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
-                    .Select(p => {
-                        string accessKey;
-                        try { accessKey = ComputeAccessKey(f.Id, p.Pin); }
-                        catch { accessKey = null; }
+            // Récupère les FileOwners pour l'utilisateur
+            var fileOwners = await _db.FileOwners
+                .Where(fo => fo.UserId == user.Id)
+                .AsNoTracking()
+                .ToListAsync();
 
-                        return new
-                        {
-                            p.Pin,
-                            p.ExpiresAt,
-                            p.Note,
-                            accessKey,
-                            LinkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
-                            p.MaxDevices
-                        };
-                    })
-            };
+            var permissionByFileId = fileOwners.ToDictionary(fo => fo.FileId);
 
             var tree = new List<object>();
 
-            // Root "Mes fichiers" : fichiers + subfolders fermés
+            // Root "Mes fichiers"
             var rootFolder = userFolders.FirstOrDefault(f => f.ParentFolderId == null);
             if (rootFolder != null)
             {
-                // Fichiers “normaux” + avatars
-                var normalFiles = rootFolder.Files.Where(f => !f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
-                var avatarFiles = rootFolder.Files.Where(f => f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
+                var normalFiles = rootFolder.Files
+                    .Where(f => !f.IsAvatar)
+                    .Select(f =>
+                    {
+                        permissionByFileId.TryGetValue(f.Id, out var fo);
+                        return (object)FileNode(f, fo);
+                    })
+                    .ToList();
+
+                var avatarFiles = rootFolder.Files
+                    .Where(f => f.IsAvatar)
+                    .Select(f =>
+                    {
+                        permissionByFileId.TryGetValue(f.Id, out var fo);
+                        return (object)FileNode(f, fo);
+                    })
+                    .ToList();
 
                 if (avatarFiles.Any())
                 {
@@ -327,12 +318,11 @@ namespace Jellyfile.Server.Controllers
                     });
                 }
 
-                // Subfolders créés : dossiers fermés
                 var subFolderLinks = userFolders
                     .Where(f => f.ParentFolderId == rootFolder.Id)
                     .Select(f => new
                     {
-                        Type = "rootLink", // nouveau type
+                        Type = "rootLink",
                         Name = f.Name,
                         Uuid = f.Uuid,
                         Files = new List<object>(),
@@ -352,22 +342,27 @@ namespace Jellyfile.Server.Controllers
                 });
             }
 
-            // Root "Shared" (inchangé)
+            // Root "Shared"
             var sharedFiles = await _db.FileOwners
-                .Where(fo => fo.UserId == user.Id)
+                .Where(fo => fo.UserId == user.Id && fo.File.CreatedById != user.Id)
                 .Include(fo => fo.File)
                     .ThenInclude(f => f.FileType)
                 .Include(fo => fo.File)
                     .ThenInclude(f => f.CreatedBy)
                 .AsNoTracking()
-                .Select(fo => fo.File)
-                .Where(f => f.CreatedById != user.Id)
                 .ToListAsync();
 
             if (sharedFiles.Any())
             {
-                var sharedNormal = sharedFiles.Where(f => !f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
-                var sharedAvatars = sharedFiles.Where(f => f.IsAvatar).Select(f => (object)FileNode(f)).ToList();
+                var sharedNormal = sharedFiles
+                    .Where(fo => !fo.File.IsAvatar)
+                    .Select(fo => (object)FileNode(fo.File, fo))
+                    .ToList();
+
+                var sharedAvatars = sharedFiles
+                    .Where(fo => fo.File.IsAvatar)
+                    .Select(fo => (object)FileNode(fo.File, fo))
+                    .ToList();
 
                 if (sharedAvatars.Any())
                 {
@@ -395,29 +390,35 @@ namespace Jellyfile.Server.Controllers
         }
 
 
-
-
-        private async Task<object> BuildFolderRecursive(Folder folder)
+        private async Task<object> BuildFolderRecursive(Folder folder, Dictionary<int, FileOwner> permissionByFileId)
         {
             return new
             {
                 folder.Id,
                 folder.Name,
                 folder.Uuid,
-                SubFolders = await Task.WhenAll(folder.SubFolders.Select(f => BuildFolderRecursive(f))),
+                SubFolders = await Task.WhenAll(folder.SubFolders.Select(f => BuildFolderRecursive(f, permissionByFileId))),
                 Files = folder.Files
                     .Where(f => !f.IsAvatar)
-                    .Select(f => FileNode(f))
+                    .Select(f =>
+                    {
+                        permissionByFileId.TryGetValue(f.Id, out var fo);
+                        return (object)FileNode(f, fo);
+                    })
                     .ToList(),
                 Avatars = folder.Files
                     .Where(f => f.IsAvatar)
-                    .Select(f => FileNode(f))
+                    .Select(f =>
+                    {
+                        permissionByFileId.TryGetValue(f.Id, out var fo);
+                        return (object)FileNode(f, fo);
+                    })
                     .ToList()
             };
         }
 
 
-        private object FileNode(Jellyfile.Server.Models.File f)
+        private object FileNode(Jellyfile.Server.Models.File f, FileOwner fo)
         {
             return new
             {
@@ -430,6 +431,8 @@ namespace Jellyfile.Server.Controllers
                 CreatedAt = f.CreatedAt,
                 FileTypeName = f.FileType?.Name ?? "Autre",
                 Owner = f.CreatedBy?.Username,
+                Permission = fo.Permission,
+                PermissionExpiresAt = fo.PermissionExpiresAt,
                 Pins = f.Pins
                     .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
                     .Select(p =>
@@ -469,19 +472,34 @@ namespace Jellyfile.Server.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
+            var fileOwners = await _db.FileOwners.AsNoTracking().ToListAsync();
+            var fileOwnerLookup = fileOwners.ToLookup(fo => fo.FileId);
+
             var tree = new List<object>();
 
             foreach (var u in users)
             {
-                var userFiles = files.Where(f => f.CreatedById == u.Id);
                 var userFolders = folders.Where(f => f.OwnerId == u.Id).ToList();
                 var rootFolder = userFolders.FirstOrDefault(f => f.ParentFolderId == null);
+                if (rootFolder == null) continue;
 
-                if (rootFolder == null)
-                    continue;
+                var normalFiles = rootFolder.Files
+                    .Where(f => !f.IsAvatar)
+                    .Select(f =>
+                    {
+                        var fo = fileOwnerLookup[f.Id].FirstOrDefault(x => x.UserId == u.Id);
+                        return (object)FileNode(f, fo);
+                    })
+                    .ToList();
 
-                var normalFiles = rootFolder.Files.Where(f => !f.IsAvatar).Select(f => FileNode(f)).ToList();
-                var avatarFiles = rootFolder.Files.Where(f => f.IsAvatar).Select(f => FileNode(f)).ToList();
+                var avatarFiles = rootFolder.Files
+                    .Where(f => f.IsAvatar)
+                    .Select(f =>
+                    {
+                        var fo = fileOwnerLookup[f.Id].FirstOrDefault(x => x.UserId == u.Id);
+                        return (object)FileNode(f, fo);
+                    })
+                    .ToList();
 
                 if (avatarFiles.Any())
                 {
@@ -496,7 +514,6 @@ namespace Jellyfile.Server.Controllers
                     });
                 }
 
-                // subfolders comme “rootLink”
                 var subFolderLinks = userFolders
                     .Where(f => f.ParentFolderId == rootFolder.Id)
                     .Select(f => new
@@ -524,20 +541,31 @@ namespace Jellyfile.Server.Controllers
         }
 
 
-
-
-
-        private object BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string rootUuid)
+        private object BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string rootUuid, Dictionary<int, FileOwner> permissionByFileId)
         {
             var fileList = files.ToList();
             if (!fileList.Any() && string.IsNullOrEmpty(rootUuid))
                 return null;
 
             // Fichiers normaux
-            var regularFiles = fileList.Where(f => !f.IsAvatar).Select(f => FileNode(f)).ToList();
-            var avatarFiles = fileList.Where(f => f.IsAvatar).Select(f => FileNode(f)).ToList();
+            var regularFiles = fileList
+                .Where(f => !f.IsAvatar)
+                .Select(f =>
+                {
+                    permissionByFileId.TryGetValue(f.Id, out var fo);
+                    return (object)FileNode(f, fo);
+                })
+                .ToList();
 
-            // Sous-dossier pour avatars si nécessaire
+            var avatarFiles = fileList
+                .Where(f => f.IsAvatar)
+                .Select(f =>
+                {
+                    permissionByFileId.TryGetValue(f.Id, out var fo);
+                    return (object)FileNode(f, fo);
+                })
+                .ToList();
+
             if (avatarFiles.Any())
             {
                 regularFiles.Add(new
@@ -550,7 +578,6 @@ namespace Jellyfile.Server.Controllers
                 });
             }
 
-            // Si rootUuid fourni, crée un "rootLink" pour que le frontend puisse le traiter
             if (!string.IsNullOrEmpty(rootUuid))
             {
                 regularFiles.Insert(0, new
@@ -568,9 +595,6 @@ namespace Jellyfile.Server.Controllers
                 Uuid = rootUuid
             };
         }
-
-
-
 
 
         [HttpPost("setAvatar/{uuid}/{fileName}")]
@@ -930,69 +954,69 @@ namespace Jellyfile.Server.Controllers
             });
         }
 
-    [HttpPost("pin/validate/{uuid}/{fileName}")]
-    public async Task<IActionResult> ValidatePin(string uuid, string fileName, [FromBody] ValidatePinDto dto)
-    {
-        var pin = dto.Pin;
-        var accessToken = dto.AccessToken;
-        var fp = dto.Fingerprint;
-
-        var dbFile = await _db.Files
-            .Include(f => f.FileType)
-            .Include(f => f.Pins)
-                .ThenInclude(p => p.FailedFingerprints)
-            .Include(f => f.CreatedBy)
-            .Include(f => f.Owners)
-            .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
-
-        var filePin = await ValidateFilePin(dbFile, dto.Pin, dto.AccessToken, dto.Fingerprint, false);
-        if (filePin == null)
-            return StatusCode(403, new { message = "PIN invalide ou accès bloqué" });
-
-        if (dbFile == null)
-            return StatusCode(403, new { message = "PIN invalide" });
-
-        var expectedKey = ComputeAccessKey(dbFile.Id, pin);
-        if (accessToken != expectedKey)
-            return StatusCode(403, new { message = "PIN invalide" });
-
-        var userId = HttpContext.Session.GetInt32("UserId");
-
-        var fileObj = new
+        [HttpPost("pin/validate/{uuid}/{fileName}")]
+        public async Task<IActionResult> ValidatePin(string uuid, string fileName, [FromBody] ValidatePinDto dto)
         {
-            dbFile.Name,
-            dbFile.Uuid,
-            dbFile.Path,
-            dbFile.SizeBytes,
-            dbFile.CreatedAt,
-            FileTypeName = dbFile.FileType.Name,
-            Owner = dbFile.CreatedBy.Username
-        };
+            var pin = dto.Pin;
+            var accessToken = dto.AccessToken;
+            var fp = dto.Fingerprint;
 
-        if (userId != null)
-        {
-            var access = dbFile.Owners.Any(fo =>
-                fo.UserId == userId.Value &&
-                fo.Permission == PermissionLevel.AuthUser &&
-                (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+            var dbFile = await _db.Files
+                .Include(f => f.FileType)
+                .Include(f => f.Pins)
+                    .ThenInclude(p => p.FailedFingerprints)
+                .Include(f => f.CreatedBy)
+                .Include(f => f.Owners)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
 
-            if (!access)
+            var filePin = await ValidateFilePin(dbFile, dto.Pin, dto.AccessToken, dto.Fingerprint, false);
+            if (filePin == null)
+                return StatusCode(403, new { message = "PIN invalide ou accès bloqué" });
+
+            if (dbFile == null)
+                return StatusCode(403, new { message = "PIN invalide" });
+
+            var expectedKey = ComputeAccessKey(dbFile.Id, pin);
+            if (accessToken != expectedKey)
+                return StatusCode(403, new { message = "PIN invalide" });
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+
+            var fileObj = new
             {
-                _db.FileOwners.Add(new FileOwner
-                {
-                    UserId = userId.Value,
-                    Permission = PermissionLevel.AuthUser,
-                    FileId = dbFile.Id
-                });
+                dbFile.Name,
+                dbFile.Uuid,
+                dbFile.Path,
+                dbFile.SizeBytes,
+                dbFile.CreatedAt,
+                FileTypeName = dbFile.FileType.Name,
+                Owner = dbFile.CreatedBy.Username
+            };
 
-                await _db.SaveChangesAsync();
+            if (userId != null)
+            {
+                var access = dbFile.Owners.Any(fo =>
+                    fo.UserId == userId.Value &&
+                    fo.Permission == PermissionLevel.AuthUser &&
+                    (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+
+                if (!access)
+                {
+                    _db.FileOwners.Add(new FileOwner
+                    {
+                        UserId = userId.Value,
+                        Permission = PermissionLevel.AuthUser,
+                        FileId = dbFile.Id
+                    });
+
+                    await _db.SaveChangesAsync();
+                }
+
+                return Ok(new { authenticated = true, file = fileObj });
             }
 
-            return Ok(new { authenticated = true, file = fileObj });
+            return Ok(new { authenticated = false, file = fileObj });
         }
-
-        return Ok(new { authenticated = false, file = fileObj });
-    }
 
 
         private string ComputeAccessKey(int fileId, string pin)
@@ -1091,6 +1115,48 @@ namespace Jellyfile.Server.Controllers
             }
 
             return matchingPin;
+        }
+
+
+        [HttpPut("{uuid}/{fileName}/permission")]
+        public async Task<IActionResult> UpdateFilePermission(
+        string uuid,
+        string fileName,
+        [FromBody] PermissionUpdateDto dto)
+        {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            // Récupère le fichier avec tous ses owners
+            var dbFile = await _db.Files
+                .Include(f => f.Owners)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (dbFile == null)
+                return NotFound(new { message = "Fichier introuvable" });
+
+            // Vérifie que l'utilisateur est le créateur
+            var currentUser = await _db.Users.FindAsync(userId.Value);
+
+            if (dbFile.CreatedById != userId.Value && currentUser.Role != "Admin")
+                return StatusCode(403, new { message = "Accès refusé" });
+
+            // Met à jour la permission pour tous les utilisateurs
+            foreach (var fo in dbFile.Owners)
+            {
+                fo.Permission = (PermissionLevel)dto.Permission;
+                fo.PermissionExpiresAt = null;
+            }
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new { uuid = dbFile.Uuid, newPermission = dto.Permission });
+        }
+
+        public class PermissionUpdateDto
+        {
+            public int Permission { get; set; }
         }
 
     }

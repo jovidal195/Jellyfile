@@ -1,5 +1,5 @@
 ﻿import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload, faDice, faUserGroup, faMobileScreenButton } from '@fortawesome/free-solid-svg-icons';
+import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload, faDice, faUserGroup, faMobileScreenButton, faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PDFFlipbook from './PDFFlipbook';
@@ -384,6 +384,36 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         document.body.removeChild(link);
     }
 
+    const changePermission = async (file, setFile) => {
+        const toPublic = file.permission !== 0;
+        const permission = toPublic ? 0 : 2;
+
+        try {
+            const response = await fetch(`/api/files/${file.uuid}/${file.name}/permission`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ permission: permission })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Met à jour le fichier local pour que le toggle reflète la nouvelle permission
+                setFile(prev => ({ ...prev, permission: data.newPermission }));
+            } else if (response.status === 403) {
+                toast("error", "Accès refusé");
+            } else if (response.status === 401) {
+                toast("error", "Session expirée");
+            } else {
+                toast("error", data.message || "Erreur lors de la modification de la permission");
+            }
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur réseau ou serveur");
+        }
+    };
+
+
     useEffect(() => {
         if (file) {
             setPinData(pinsByFile[file.uuid] || file.pins);
@@ -395,7 +425,24 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             <FontAwesomeIcon icon={faCircleLeft} id="arrow" onClick={return2main} />
             <div className="file-controller">
                 <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem' }}><FontAwesomeIcon icon={icon} />{file.name}</h2>
-                <div style={{ display: "flex", gap: "10px", padding: "10px" }}><FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`)} style={{ cursor: "pointer" }} /><FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} /><FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} /></div>
+                <div style={{ display: "flex", gap: "10px", padding: "10px" }}>
+                    <FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`)} style={{ cursor: "pointer" }} />
+                    {file.permission === 0 && (
+                        <FontAwesomeIcon
+                            icon={faShareAlt} // ou un autre icône de partage
+                            onClick={() => {
+                                const url = `${window.location.origin}/api/files/${file.uuid}/${file.name}?t=${Date.now()}`;
+                                navigator.clipboard.writeText(url)
+                                    .then(() => toast("success", "Lien copié dans le presse-papier"))
+                                    .catch(() => toast("error", "Impossible de copier le lien"));
+                            }}
+                            style={{ cursor: "pointer" }}
+                        />
+                    )}
+                    <FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
+                    <FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
+                </div>
+                <div style={{ padding: "10px", alignItems: "center", display: "flex", gap: "5px" }}><label>Public ? </label><ToggleSwitch checked={file.permission == 0} onChange={() => changePermission(file, setFile) } /></div>
                 {file.fileTypeName === "Image" ? (
                     <>
                         {file.isAvatar ? (
