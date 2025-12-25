@@ -263,83 +263,93 @@ namespace Jellyfile.Server.Controllers
 
         private async Task<object> BuildUserTree(User user)
         {
-            // Récupère tous les dossiers de l'utilisateur
-            var userFolders = await _db.Folders
+            var folders = await _db.Folders
                 .Where(f => f.OwnerId == user.Id)
-                .Include(f => f.Files)
-                    .ThenInclude(ff => ff.FileType)
-                .Include(f => f.Files)
-                    .ThenInclude(ff => ff.CreatedBy)
                 .AsNoTracking()
                 .ToListAsync();
 
-            // Récupère les FileOwners pour l'utilisateur
+            var files = await _db.Files
+                .Include(f => f.FileType)
+                .Include(f => f.CreatedBy)
+                .Include(f => f.Pins)
+                .AsNoTracking()
+                .ToListAsync();
+
             var fileOwners = await _db.FileOwners
                 .Where(fo => fo.UserId == user.Id)
                 .AsNoTracking()
                 .ToListAsync();
 
-            var permissionByFileId = fileOwners.ToDictionary(fo => fo.FileId);
+            var filesByFolder = files
+                .Where(f => f.ParentFolderId.HasValue)
+                .GroupBy(f => f.ParentFolderId.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            var tree = new List<object>();
+            var childrenByParent = folders
+                .Where(f => f.ParentFolderId.HasValue)
+                .GroupBy(f => f.ParentFolderId.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var fileOwnerLookup = fileOwners.ToLookup(fo => fo.FileId);
+
+            List<object> tree = new List<object>();
 
             // Root "Mes fichiers"
-            var rootFolder = userFolders.FirstOrDefault(f => f.ParentFolderId == null);
+            var rootFolder = folders.FirstOrDefault(f => f.OwnerId == user.Id && f.ParentFolderId == null);
             if (rootFolder != null)
             {
-                var normalFiles = rootFolder.Files
-                    .Where(f => !f.IsAvatar)
-                    .Select(f =>
-                    {
-                        permissionByFileId.TryGetValue(f.Id, out var fo);
-                        return (object)FileNode(f, fo);
-                    })
-                    .ToList();
-
-                var avatarFiles = rootFolder.Files
-                    .Where(f => f.IsAvatar)
-                    .Select(f =>
-                    {
-                        permissionByFileId.TryGetValue(f.Id, out var fo);
-                        return (object)FileNode(f, fo);
-                    })
-                    .ToList();
-
-                if (avatarFiles.Any())
+                object BuildFolderRecursive(Folder folder)
                 {
-                    normalFiles.Add(new
+                    var normalFiles = new List<object>();
+                    var avatarFiles = new List<object>();
+
+                    if (filesByFolder.TryGetValue(folder.Id, out var filesInFolder))
+                    {
+                        foreach (var f in filesInFolder)
+                        {
+                            var fo = fileOwnerLookup[f.Id].FirstOrDefault();
+                            if (f.IsAvatar)
+                                avatarFiles.Add(FileNode(f, fo));
+                            else
+                                normalFiles.Add(FileNode(f, fo));
+                        }
+                    }
+
+                    var childNodes = new List<object>();
+                    if (childrenByParent.TryGetValue(folder.Id, out var childFolders))
+                    {
+                        foreach (var cf in childFolders)
+                            childNodes.Add(BuildFolderRecursive(cf));
+                    }
+
+                    if (avatarFiles.Any())
+                    {
+                        normalFiles.Add(new
+                        {
+                            Type = "folder",
+                            IsFolder = true,
+                            Name = "Avatars",
+                            Files = avatarFiles,
+                            Count = avatarFiles.Count
+                        });
+                    }
+
+                    var combined = new List<object>();
+                    combined.AddRange(normalFiles);
+                    combined.AddRange(childNodes);
+
+                    return new
                     {
                         Type = "folder",
                         IsFolder = true,
-                        Name = "Avatars",
-                        Files = avatarFiles,
-                        Count = avatarFiles.Count,
-                        Uuid = rootFolder.Uuid
-                    });
+                        Name = folder.Name,
+                        Uuid = folder.Uuid,
+                        Files = combined,
+                        Count = combined.Count
+                    };
                 }
 
-                var subFolderLinks = userFolders
-                    .Where(f => f.ParentFolderId == rootFolder.Id)
-                    .Select(f => new
-                    {
-                        Type = "rootLink",
-                        Name = f.Name,
-                        Uuid = f.Uuid,
-                        Files = new List<object>(),
-                        Count = 0
-                    }).ToList();
-
-                normalFiles.AddRange(subFolderLinks);
-
-                tree.Add(new
-                {
-                    Type = "folder",
-                    IsFolder = true,
-                    Name = rootFolder.Name,
-                    Uuid = rootFolder.Uuid,
-                    Files = normalFiles,
-                    Count = normalFiles.Count
-                });
+                tree.Add(BuildFolderRecursive(rootFolder));
             }
 
             // Root "Shared"
@@ -354,15 +364,16 @@ namespace Jellyfile.Server.Controllers
 
             if (sharedFiles.Any())
             {
-                var sharedNormal = sharedFiles
-                    .Where(fo => !fo.File.IsAvatar)
-                    .Select(fo => (object)FileNode(fo.File, fo))
-                    .ToList();
+                var sharedNormal = new List<object>();
+                var sharedAvatars = new List<object>();
 
-                var sharedAvatars = sharedFiles
-                    .Where(fo => fo.File.IsAvatar)
-                    .Select(fo => (object)FileNode(fo.File, fo))
-                    .ToList();
+                foreach (var fo in sharedFiles)
+                {
+                    if (fo.File.IsAvatar)
+                        sharedAvatars.Add(FileNode(fo.File, fo));
+                    else
+                        sharedNormal.Add(FileNode(fo.File, fo));
+                }
 
                 if (sharedAvatars.Any())
                 {
@@ -388,6 +399,7 @@ namespace Jellyfile.Server.Controllers
 
             return tree;
         }
+
 
 
         private async Task<object> BuildFolderRecursive(Folder folder, Dictionary<int, FileOwner> permissionByFileId)
@@ -457,25 +469,29 @@ namespace Jellyfile.Server.Controllers
         private async Task<object> BuildAdminTree()
         {
             var users = await _db.Users.AsNoTracking().ToListAsync();
+            var folders = await _db.Folders.AsNoTracking().ToListAsync();
             var files = await _db.Files
                 .Include(f => f.FileType)
-                .Include(f => f.Pins)
                 .Include(f => f.CreatedBy)
+                .Include(f => f.Pins)
                 .AsNoTracking()
                 .ToListAsync();
-
-            var folders = await _db.Folders
-                .Include(f => f.Files)
-                    .ThenInclude(ff => ff.FileType)
-                .Include(f => f.Files)
-                    .ThenInclude(ff => ff.CreatedBy)
-                .AsNoTracking()
-                .ToListAsync();
-
             var fileOwners = await _db.FileOwners.AsNoTracking().ToListAsync();
+
+            // Groupements pour accès rapide
+            var filesByFolder = files
+                .Where(f => f.ParentFolderId.HasValue)
+                .GroupBy(f => f.ParentFolderId.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var childrenByParent = folders
+                .Where(f => f.ParentFolderId.HasValue)
+                .GroupBy(f => f.ParentFolderId.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             var fileOwnerLookup = fileOwners.ToLookup(fo => fo.FileId);
 
-            var tree = new List<object>();
+            List<object> tree = new List<object>();
 
             foreach (var u in users)
             {
@@ -483,62 +499,66 @@ namespace Jellyfile.Server.Controllers
                 var rootFolder = userFolders.FirstOrDefault(f => f.ParentFolderId == null);
                 if (rootFolder == null) continue;
 
-                var normalFiles = rootFolder.Files
-                    .Where(f => !f.IsAvatar)
-                    .Select(f =>
-                    {
-                        var fo = fileOwnerLookup[f.Id].FirstOrDefault(x => x.UserId == u.Id);
-                        return (object)FileNode(f, fo);
-                    })
-                    .ToList();
-
-                var avatarFiles = rootFolder.Files
-                    .Where(f => f.IsAvatar)
-                    .Select(f =>
-                    {
-                        var fo = fileOwnerLookup[f.Id].FirstOrDefault(x => x.UserId == u.Id);
-                        return (object)FileNode(f, fo);
-                    })
-                    .ToList();
-
-                if (avatarFiles.Any())
+                object BuildFolderRecursive(Folder folder)
                 {
-                    normalFiles.Add(new
+                    var normalFiles = new List<object>();
+                    var avatarFiles = new List<object>();
+
+                    if (filesByFolder.TryGetValue(folder.Id, out var filesInFolder))
+                    {
+                        foreach (var f in filesInFolder)
+                        {
+                            var fo = fileOwnerLookup[f.Id].FirstOrDefault(x => x.UserId == u.Id);
+                            if (f.IsAvatar)
+                                avatarFiles.Add(FileNode(f, fo));
+                            else
+                                normalFiles.Add(FileNode(f, fo));
+                        }
+                    }
+
+                    // sous-dossiers
+                    var childNodes = new List<object>();
+                    if (childrenByParent.TryGetValue(folder.Id, out var childFolders))
+                    {
+                        foreach (var cf in childFolders)
+                            childNodes.Add(BuildFolderRecursive(cf));
+                    }
+
+                    // ajouter un sous-dossier "Avatars" si nécessaire
+                    if (avatarFiles.Any())
+                    {
+                        normalFiles.Add(new
+                        {
+                            Type = "folder",
+                            IsFolder = true,
+                            Name = "Avatars",
+                            Files = avatarFiles,
+                            Count = avatarFiles.Count
+                        });
+                    }
+
+                    var combined = new List<object>();
+                    combined.AddRange(normalFiles);
+                    combined.AddRange(childNodes);
+
+                    return new
                     {
                         Type = "folder",
                         IsFolder = true,
-                        Name = "Avatars",
-                        Files = avatarFiles,
-                        Count = avatarFiles.Count,
-                        Uuid = rootFolder.Uuid
-                    });
+                        Name = folder.Name,
+                        Uuid = folder.Uuid,
+                        Files = combined,
+                        Count = combined.Count
+                    };
                 }
 
-                var subFolderLinks = userFolders
-                    .Where(f => f.ParentFolderId == rootFolder.Id)
-                    .Select(f => new
-                    {
-                        Type = "rootLink",
-                        Name = f.Name,
-                        Uuid = f.Uuid,
-                        Files = new List<object>(),
-                        Count = 0
-                    }).ToList();
-
-                normalFiles.AddRange(subFolderLinks);
-
-                tree.Add(new
-                {
-                    Type = "folder",
-                    Name = u.Username,
-                    Uuid = rootFolder.Uuid,
-                    Files = normalFiles,
-                    Count = normalFiles.Count
-                });
+                tree.Add(BuildFolderRecursive(rootFolder));
             }
 
             return tree;
         }
+
+
 
 
         private object BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string rootUuid, Dictionary<int, FileOwner> permissionByFileId)
