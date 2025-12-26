@@ -92,6 +92,7 @@ export default function Interface({ toggleTheme, theme }) {
             if (res.ok) {
                 const data = await res.json();
                 setTree(data);
+                return data;
             }
         } catch (err) {
             console.error(err);
