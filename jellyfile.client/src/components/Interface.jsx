@@ -131,13 +131,13 @@ export default function Interface({ toggleTheme, theme }) {
                 </span>
                 {menuOpen &&
                     (isMobile ? (
-                    <UserModal user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} toggleTheme={toggleTheme} theme={theme} />
+                        <UserModal user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} toggleTheme={toggleTheme} theme={theme} />
                     ) : (
                         <UserMenu user={user} onClose={closeMenu} return2main={return2main} setUsers={setUsers} toggleTheme={toggleTheme} theme={theme} />
                     ))}
             </header>
             <div className="content">
-                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} />
+                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} isMobile={isMobile} />
                 <div className="right-box">
                     <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} setavatarLink={setavatarLink} />
                     <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} />

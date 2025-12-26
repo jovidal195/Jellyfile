@@ -75,8 +75,75 @@ namespace Jellyfile.Server.Controllers
         }
 
 
+        [HttpDelete("promote/{uuid}")]
+        public async Task<IActionResult> DeleteAndPromote(string uuid)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            // Récupère le folder + owner
+            var folder = await _db.Folders
+                .Include(f => f.SubFolders)
+                .Include(f => f.Files)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid);
+
+            if (folder == null)
+                return NotFound(new { message = "Dossier introuvable" });
+
+            // Récupère l'utilisateur courant pour vérifier l'admin
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == sessionUserId.Value);
+            if (user == null)
+                return Unauthorized(new { message = "Utilisateur introuvable" });
+
+            // Vérifie que c'est le créateur ou un admin
+            if (folder.OwnerId != sessionUserId.Value && user.Role != "Admin")
+                return StatusCode(403, new { message = "Vous n'avez pas la permission de supprimer ce dossier" });
 
 
+            if (folder.ParentFolderId == null)
+                return BadRequest(new { message = "Impossible de promouvoir les enfants d'un dossier root" });
+
+            using var transaction = await _db.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Remonter les sous-dossiers
+                var childrenFolders = await _db.Folders
+                    .Where(f => f.ParentFolderId == folder.Id)
+                    .ToListAsync();
+
+                foreach (var child in childrenFolders)
+                {
+                    child.ParentFolderId = folder.ParentFolderId;
+                    child.OwnerId = folder.OwnerId;
+                    _db.Folders.Update(child);
+                }
+
+                // Remonter les fichiers
+                var files = await _db.Files
+                    .Where(f => f.ParentFolderId == folder.Id)
+                    .ToListAsync();
+
+                foreach (var file in files)
+                {
+                    file.ParentFolderId = folder.ParentFolderId;
+                    _db.Files.Update(file);
+                }
+
+                _db.Folders.Remove(folder);
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { message = "Dossier supprimé et enfants promus" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { message = "Erreur interne", detail = ex.Message });
+            }
+        }
 
     };
 }

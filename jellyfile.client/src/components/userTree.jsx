@@ -11,15 +11,20 @@ import {
     faFileArchive,
     faFileCode,
     faFileAlt,
-    faFolderPlus
+    faFolderPlus,
+    faTrash
 } from '@fortawesome/free-solid-svg-icons';
 import './userTree.css';
 import { displayFilePage } from "../utils/displayFilePage.js";
 import { useToast } from "./ToastProvider";
+import Modal from "./Modal";
 
-function userTree({ user, tree, setFile, reloadTree }) {
+function userTree({ user, tree, setFile, reloadTree, isMobile }) {
     const [stack, setStack] = useState([]); // navigation stack : [] = root view
     const [localTree, setLocalTree] = useState(tree);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [folderToDelete, setFolderToDelete] = useState(null);
+
     const toast = useToast();
 
     const fileTypeIcons = {
@@ -115,13 +120,10 @@ function userTree({ user, tree, setFile, reloadTree }) {
 
             // deep clone localTree
             const newTree = JSON.parse(JSON.stringify(localTree || []));
-            console.log(localTree);
-            console.log(newTree);
 
             // si on est au root, il faut ajouter le dossier au bon root node (ou comme nouveau root si c'est permis)
             if (stack.length === 0) {
                 // essayer d'ajouter au wrapper correspondant au currentRoot (si currentRoot fournie)
-                console.log(currentRoot);
                 if (currentRoot) {
                     // currentRoot peut être un wrapper original => trouver dans newTree par name/Uuid
                     const target = findNodeByUuid(newTree, currentRoot?.Uuid || currentRoot?.uuid) ||
@@ -134,7 +136,7 @@ function userTree({ user, tree, setFile, reloadTree }) {
                             Name: createdName,
                             Uuid: createdUuid,
                             uuid: createdUuid,
-                            Files: []
+                            files: []
                         });
                     } else {
                         // si on ne trouve pas le wrapper, on ajoute un root simple
@@ -144,7 +146,7 @@ function userTree({ user, tree, setFile, reloadTree }) {
                             Name: createdName,
                             Uuid: createdUuid,
                             uuid: createdUuid,
-                            Files: []
+                            files: []
                         });
                     }
                     console.log("new tree post-append (a) :", newTree);
@@ -156,7 +158,7 @@ function userTree({ user, tree, setFile, reloadTree }) {
                         Name: createdName,
                         Uuid: createdUuid,
                         uuid: createdUuid,
-                        Files: []
+                        files: []
                     });
                     console.log("new tree post-append (b) :", newTree);
                 }
@@ -174,7 +176,7 @@ function userTree({ user, tree, setFile, reloadTree }) {
                         Name: createdName,
                         Uuid: createdUuid,
                         uuid: createdUuid,
-                        Files: []
+                        files: []
                     });
                     console.log("new tree post-append (c) :", newTree);
                 } else {
@@ -185,21 +187,14 @@ function userTree({ user, tree, setFile, reloadTree }) {
                         Name: createdName,
                         Uuid: createdUuid,
                         uuid: createdUuid,
-                        Files: []
+                        files: []
                     });
                     console.log("new tree post-append (d) :", newTree);
                 }
             }
 
-            // remapper la stack : remplacer chaque entrée par la référence correspondante dans le newTree
-            const newStack = stack.map(s => {
-                const uuid = s?.Uuid || s?.uuid;
-                return findNodeByUuid(newTree, uuid) || s;
-            });
-
             // appliquer les nouveaux states
             setLocalTree(newTree);
-            //setStack(newStack);
 
             // Optionnel : si tu veux forcer un reload réseau en plus, appelle reloadTree() après
             // await reloadTree(); // si reloadTree retourne et met à jour tree prop
@@ -257,7 +252,7 @@ function userTree({ user, tree, setFile, reloadTree }) {
                 _isWrapper: true,
                 type: "folder",
                 name: getNodeName(rootNode),
-                Files: sortChildren(getChildren(rootNode)),
+                files: sortChildren(getChildren(rootNode)),
                 _original: rootNode,
                 _isTopLevel: true
             }));
@@ -301,13 +296,27 @@ function userTree({ user, tree, setFile, reloadTree }) {
                             onClick={(e) => { e.stopPropagation(); handleAddFolder(original); }}
                         />
                     )}
+                    <FontAwesomeIcon
+                        icon={faTrash}
+                        style={{
+                            float: "right",
+                            paddingTop: "5px",
+                            marginRight: "8px",
+                            cursor: "pointer",
+                            color: "#b94a48"
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteModal(node._original);
+                        }}
+                    />
                 </div>
             );
         }
 
         if (node._isWrapper) {
             const headerKey = `wrapper-${idx}`;
-            const children = node.Files || [];
+            const children = node.files || [];
             return (
                 <div key={headerKey} className="folder">
                     <div className="clickable-tree folder-tree">
@@ -350,6 +359,48 @@ function userTree({ user, tree, setFile, reloadTree }) {
 
     const currentItems = buildCurrentView();
 
+    const openDeleteModal = (folder) => {
+        setFolderToDelete(folder);
+        setIsDeleteModalOpen(true);
+    };
+
+    const closeDeleteModal = () => {
+        setIsDeleteModalOpen(false);
+        setFolderToDelete(null);
+    };
+
+    const deleteWithPromote = async () => {
+        if (!folderToDelete) return;
+
+        try {
+            const res = await fetch(`/api/folders/promote/${folderToDelete.uuid}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                toast("error", data?.message || "Erreur lors de la suppression");
+                return;
+            }
+
+            
+            closeDeleteModal();
+            await reloadTree();
+            setStack(prevStack => prevStack.slice(0, prevStack.length - 1));
+
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur inattendue lors de la suppression");
+        }
+    };
+
+    const deleteWithCascade = () => {
+        console.log("DELETE CASCADE", folderToDelete);
+        toast("info", "fonctionnalité en cours d'implémentation");
+        closeDeleteModal();
+    };
+
     useEffect(() => {
         // replace localTree with new prop and remap stack entries to the new objects (by UUID)
         setLocalTree(tree);
@@ -369,6 +420,29 @@ function userTree({ user, tree, setFile, reloadTree }) {
     return (
         <div className="left-box">
             {currentItems.map((item, idx) => renderViewItem(item, idx, 0))}
+            <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
+                <h3>Supprimer le dossier</h3>
+
+                <p>
+                    Vous vous apprêtez à supprimer le dossier <strong style={{ border: "var(--interface-text) solid 0.5px", padding: "5px", borderRadius: "5px" }}><FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {folderToDelete?.name}</strong> de façon définitive. Voulez-vous faire remonter son contenu afin de le garder ?<br/><strong><em>attention cette action est irréversible</em></strong>
+                </p>
+
+                <div className="modal-actions" style={{ display: "inline-flex", gap: "10px", flexDirection: isMobile ? "column" : "row" }}>
+                    <button onClick={closeDeleteModal}>
+                        Annuler
+                    </button>
+
+                    <button onClick={deleteWithPromote}>
+                        Oui
+                    </button>
+
+                    <button className="danger" onClick={deleteWithCascade}>
+                        Non, tout supprimer
+                    </button>
+
+                </div>
+            </Modal>
+
         </div>
     );
 }
