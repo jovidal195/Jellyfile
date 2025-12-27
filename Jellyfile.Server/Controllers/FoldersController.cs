@@ -13,14 +13,20 @@ namespace Jellyfile.Server.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly FileServingService _fileService;
         private readonly IConfiguration _config;
+        private readonly ILogger<FoldersController> _logger;
 
-        public FoldersController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config)
+        public FoldersController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config, ILogger<FoldersController> logger)
         {
             _db = db;
             _env = env;
             _fileService = fileService;
             _config = config;
+            _logger = logger;
         }
+
+        // ---------------------------------------
+        // Création de dossier
+        // ---------------------------------------
 
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] CreateFolderRequest request)
@@ -74,6 +80,9 @@ namespace Jellyfile.Server.Controllers
             public string ParentFolderUuid { get; set; } // uuid du parent, null si root
         }
 
+        // ---------------------------------------
+        // Suppression par promotions
+        // ---------------------------------------
 
         [HttpDelete("promote/{uuid}")]
         public async Task<IActionResult> DeleteAndPromote(string uuid)
@@ -142,6 +151,140 @@ namespace Jellyfile.Server.Controllers
             {
                 await transaction.RollbackAsync();
                 return StatusCode(500, new { message = "Erreur interne", detail = ex.Message });
+            }
+        }
+
+
+        // ---------------------------------------
+        // Suppression récursive
+        // ---------------------------------------
+
+        [HttpDelete("delete-recursive/{uuid}")]
+        public async Task<IActionResult> DeleteRecursive(string uuid)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized();
+
+            try
+            {
+                await DeleteFolderRecursiveAsync(uuid, sessionUserId.Value);
+                return Ok(new { message = "Suppression complète effectuée" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
+
+        private async Task DeleteFolderRecursiveAsync(string folderUuid, int sessionUserId)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == sessionUserId);
+            if (user == null)
+                throw new UnauthorizedAccessException();
+
+            var folder = await _db.Folders.FirstOrDefaultAsync(f => f.Uuid == folderUuid);
+            if (folder == null)
+                throw new InvalidOperationException("Dossier introuvable");
+
+            if (folder.ParentFolderId == null)
+                throw new InvalidOperationException("Impossible de supprimer un dossier racine");
+
+            var isOwner = folder.OwnerId == user.Id;
+            var isAdmin = user.Role == "Admin";
+
+            if (!isOwner && !isAdmin)
+                throw new UnauthorizedAccessException("Permission refusée");
+
+            // 1. récupérer tous les dossiers descendants
+            var allFolders = await GetAllDescendantFolders(folder);
+
+            var folderIds = allFolders.Select(f => f.Id).ToList();
+
+            // 2. récupérer tous les fichiers liés
+            var files = await _db.Files
+                .Where(f => f.ParentFolderId != null && folderIds.Contains(f.ParentFolderId.Value))
+                .ToListAsync();
+
+            // 3. suppression physique des fichiers
+            var projectRoot = UserFolderService.FindProjectRoot();
+            //_logger.LogInformation("projectRoot = {Root}", projectRoot);
+            
+            foreach (var file in files)
+            {
+                var fullPath = Path.Combine(projectRoot, "users", file.Path);
+                //_logger.LogInformation("Deleting file {Path}", fullPath);
+                if (System.IO.File.Exists(fullPath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(fullPath);
+                    }
+                    catch
+                    {
+                        // volontairement silencieux, la DB doit rester cohérente
+                    }
+                }
+            }
+
+            // 4. suppression DB (cascade sur Files + FileOwners)
+            if (files.Any())
+            {
+                _db.Files.RemoveRange(files);
+            }
+            _db.Folders.RemoveRange(allFolders);
+            await _db.SaveChangesAsync();
+
+            // 5. recalcul du quota
+            await RecalculateStorageUsedBytes(user.Id);
+        }
+
+        private async Task<List<Folder>> GetAllDescendantFolders(Folder root)
+        {
+            var result = new List<Folder> { root };
+            var queue = new Queue<Folder>();
+            queue.Enqueue(root);
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+
+                var children = await _db.Folders
+                    .Where(f => f.ParentFolderId == current.Id)
+                    .ToListAsync();
+
+                foreach (var child in children)
+                {
+                    result.Add(child);
+                    queue.Enqueue(child);
+                }
+            }
+
+            return result;
+        }
+
+        private async Task RecalculateStorageUsedBytes(int userId)
+        {
+            var files = await _db.FileOwners
+                .Where(fo => fo.UserId == userId)
+                .Select(fo => fo.File)
+                .Where(f => f.IsActive)
+                .Distinct()
+                .ToListAsync();
+
+            var total = files.Sum(f => f.SizeBytes);
+
+            var user = await _db.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.StorageUsedBytes = total;
+                await _db.SaveChangesAsync();
             }
         }
 

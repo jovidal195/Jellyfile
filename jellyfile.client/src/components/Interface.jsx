@@ -137,7 +137,7 @@ export default function Interface({ toggleTheme, theme }) {
                     ))}
             </header>
             <div className="content">
-                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} isMobile={isMobile} />
+                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} isMobile={isMobile} return2main={return2main} />
                 <div className="right-box">
                     <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} setavatarLink={setavatarLink} />
                     <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} />

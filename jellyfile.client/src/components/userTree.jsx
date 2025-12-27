@@ -19,7 +19,7 @@ import { displayFilePage } from "../utils/displayFilePage.js";
 import { useToast } from "./ToastProvider";
 import Modal from "./Modal";
 
-function userTree({ user, tree, setFile, reloadTree, isMobile }) {
+function userTree({ user, tree, setFile, reloadTree, isMobile, return2main }) {
     const [stack, setStack] = useState([]); // navigation stack : [] = root view
     const [localTree, setLocalTree] = useState(tree);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -296,20 +296,22 @@ function userTree({ user, tree, setFile, reloadTree, isMobile }) {
                             onClick={(e) => { e.stopPropagation(); handleAddFolder(original); }}
                         />
                     )}
-                    <FontAwesomeIcon
-                        icon={faTrash}
-                        style={{
-                            float: "right",
-                            paddingTop: "5px",
-                            marginRight: "8px",
-                            cursor: "pointer",
-                            color: "#b94a48"
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteModal(node._original);
-                        }}
-                    />
+                    {original.name !== "Avatars" && (
+                        <FontAwesomeIcon
+                            icon={faTrash}
+                            style={{
+                                float: "right",
+                                paddingTop: "5px",
+                                marginRight: "8px",
+                                cursor: "pointer",
+                                color: "#b94a48"
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteModal(node._original);
+                            }}
+                        />
+                    )}
                 </div>
             );
         }
@@ -388,6 +390,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile }) {
             closeDeleteModal();
             await reloadTree();
             setStack(prevStack => prevStack.slice(0, prevStack.length - 1));
+            return2main();
 
         } catch (err) {
             console.error(err);
@@ -395,11 +398,53 @@ function userTree({ user, tree, setFile, reloadTree, isMobile }) {
         }
     };
 
-    const deleteWithCascade = () => {
-        console.log("DELETE CASCADE", folderToDelete);
-        toast("info", "fonctionnalité en cours d'implémentation");
-        closeDeleteModal();
+    const deleteWithCascade = async () => {
+        if (!folderToDelete?.Uuid && !folderToDelete?.uuid) return;
+
+        const uuid = folderToDelete.Uuid || folderToDelete.uuid;
+
+        try {
+            const res = await fetch(`/api/folders/delete-recursive/${uuid}`, {
+                method: "DELETE"
+            });
+
+            if (!res.ok) {
+                let msg = "Erreur suppression dossier";
+                const ct = res.headers.get("content-type");
+                if (ct && ct.includes("application/json")) {
+                    const json = await res.json();
+                    msg = json.message || msg;
+                }
+                toast("error", msg);
+                return;
+            }
+
+            toast("success", "Dossier supprimé avec son contenu");
+
+            // Si on était dans ce dossier, on remonte d'un niveau
+            setStack(prev => {
+                if (!prev.length) return prev;
+
+                const current = prev[prev.length - 1];
+                const currentUuid = current?.Uuid || current?.uuid;
+
+                if (currentUuid === uuid) {
+                    return prev.slice(0, prev.length - 1);
+                }
+                return prev;
+            });
+
+            closeDeleteModal();
+
+            // Recharge proprement depuis le backend
+            await reloadTree();
+            return2main();
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur réseau lors de la suppression");
+        }
     };
+
 
     useEffect(() => {
         // replace localTree with new prop and remap stack entries to the new objects (by UUID)
@@ -424,7 +469,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile }) {
                 <h3>Supprimer le dossier</h3>
 
                 <p>
-                    Vous vous apprêtez à supprimer le dossier <strong style={{ border: "var(--interface-text) solid 0.5px", padding: "5px", borderRadius: "5px" }}><FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {folderToDelete?.name}</strong> de façon définitive. Voulez-vous faire remonter son contenu afin de le garder ?<br/><strong><em>attention cette action est irréversible</em></strong>
+                    Vous vous apprêtez à supprimer le dossier <strong style={{ border: "var(--interface-text) solid 0.5px", padding: "5px", borderRadius: "5px" }}><FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {folderToDelete?.name}</strong> de façon définitive. Voulez-vous faire remonter l'arborescence son contenu afin de le garder ?<br/><strong><em>attention cette action est irréversible</em></strong>
                 </p>
 
                 <div className="modal-actions" style={{ display: "inline-flex", gap: "10px", flexDirection: isMobile ? "column" : "row" }}>
