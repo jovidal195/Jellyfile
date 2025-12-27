@@ -22,6 +22,7 @@ export default function Interface({ toggleTheme, theme }) {
     const [tree, setTree] = useState([]);
     const [avatarLink, setavatarLink] = useState("");
     const [file, setFile] = useState({});
+    const [stack, setStack] = useState([]);
 
 
     useEffect(() => {
@@ -137,10 +138,10 @@ export default function Interface({ toggleTheme, theme }) {
                     ))}
             </header>
             <div className="content">
-                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} isMobile={isMobile} return2main={return2main} />
+                <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} isMobile={isMobile} return2main={return2main} stack={stack} setStack={setStack} />
                 <div className="right-box">
                     <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} setavatarLink={setavatarLink} />
-                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} />
+                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} stack={stack} />
                     <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree} />
                     {user?.role === "Admin" && (
                         <MenuUsers users={users} setUsers={setUsers} />

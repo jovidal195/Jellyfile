@@ -19,8 +19,7 @@ import { displayFilePage } from "../utils/displayFilePage.js";
 import { useToast } from "./ToastProvider";
 import Modal from "./Modal";
 
-function userTree({ user, tree, setFile, reloadTree, isMobile, return2main }) {
-    const [stack, setStack] = useState([]); // navigation stack : [] = root view
+function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stack, setStack }) {
     const [localTree, setLocalTree] = useState(tree);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [folderToDelete, setFolderToDelete] = useState(null);
