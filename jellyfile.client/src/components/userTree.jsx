@@ -289,7 +289,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main }) {
             return (
                 <div key={`header-${idx}`} className="clickable-tree folder-tree" style={{ paddingLeft: depth > 0 ? "20px" : "0px", fontWeight: "bold" }}>
                     <FontAwesomeIcon icon={faFolderOpen} style={{ color: "var(--login-button-hover)" }} /> {node.name}
-                    {original.name !== "Shared" && (
+                    {original.name !== "Shared" && original.name !== "Avatars" && (
                         <FontAwesomeIcon
                             icon={faFolderPlus}
                             style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}
