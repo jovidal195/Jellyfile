@@ -21,13 +21,15 @@ namespace Jellyfile.Server.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly FileServingService _fileService;
         private readonly IConfiguration _config;
+        private readonly UserStorageService _userStorage;
 
-        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config)
+        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config, UserStorageService userStorage)
         {
             _db = db;
             _env = env;
             _fileService = fileService;
             _config = config;
+            _userStorage = userStorage;
         }
 
         [HttpPost("upload")]
@@ -400,8 +402,6 @@ namespace Jellyfile.Server.Controllers
             return tree;
         }
 
-
-
         private async Task<object> BuildFolderRecursive(Folder folder, Dictionary<int, FileOwner> permissionByFileId)
         {
             return new
@@ -428,7 +428,6 @@ namespace Jellyfile.Server.Controllers
                     .ToList()
             };
         }
-
 
         private object FileNode(Jellyfile.Server.Models.File f, FileOwner fo)
         {
@@ -557,9 +556,6 @@ namespace Jellyfile.Server.Controllers
 
             return tree;
         }
-
-
-
 
         private object BuildFolder(string name, IEnumerable<Jellyfile.Server.Models.File> files, string rootUuid, Dictionary<int, FileOwner> permissionByFileId)
         {
@@ -825,6 +821,8 @@ namespace Jellyfile.Server.Controllers
             // --- Supprimer le fichier de la DB ---
             _db.Files.Remove(dbFile);
             await _db.SaveChangesAsync();
+
+            await _userStorage.RecalculateStorageUsedBytes(currentUser.Id);
 
             return Ok(new { message = "Fichier supprimé avec succès" });
         }

@@ -14,14 +14,17 @@ namespace Jellyfile.Server.Controllers
         private readonly FileServingService _fileService;
         private readonly IConfiguration _config;
         private readonly ILogger<FoldersController> _logger;
+        private readonly UserStorageService _userStorage;
 
-        public FoldersController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config, ILogger<FoldersController> logger)
+
+        public FoldersController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config, ILogger<FoldersController> logger, UserStorageService userStorage)
         {
             _db = db;
             _env = env;
             _fileService = fileService;
             _config = config;
             _logger = logger;
+            _userStorage = userStorage;
         }
 
         // ---------------------------------------
@@ -242,7 +245,7 @@ namespace Jellyfile.Server.Controllers
             await _db.SaveChangesAsync();
 
             // 5. recalcul du quota
-            await RecalculateStorageUsedBytes(user.Id);
+            await _userStorage.RecalculateStorageUsedBytes(user.Id);
         }
 
         private async Task<List<Folder>> GetAllDescendantFolders(Folder root)
@@ -267,25 +270,6 @@ namespace Jellyfile.Server.Controllers
             }
 
             return result;
-        }
-
-        private async Task RecalculateStorageUsedBytes(int userId)
-        {
-            var files = await _db.FileOwners
-                .Where(fo => fo.UserId == userId)
-                .Select(fo => fo.File)
-                .Where(f => f.IsActive)
-                .Distinct()
-                .ToListAsync();
-
-            var total = files.Sum(f => f.SizeBytes);
-
-            var user = await _db.Users.FindAsync(userId);
-            if (user != null)
-            {
-                user.StorageUsedBytes = total;
-                await _db.SaveChangesAsync();
-            }
         }
 
     };

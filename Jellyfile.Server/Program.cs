@@ -82,6 +82,8 @@ internal class Program
             options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
         );
 
+        builder.Services.AddScoped<UserStorageService>();
+
         // ensure settings file exists (creates settings.yaml with a random secret if missing)
         ConfigYamlHelper.EnsureSettingsFileExists();
 
