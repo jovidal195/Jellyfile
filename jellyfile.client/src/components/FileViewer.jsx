@@ -366,14 +366,6 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             toast("error", "Erreur réseau ou serveur");
         }
     }
-    /*const updateFilePins = (updatedFile) => {
-        setFile(updatedFile);
-        setPinsByFile(prev => ({
-            ...prev,
-            [updatedFile.uuid]: updatedFile.pins
-        }));
-        setPinData(updatedFile.pins);
-    };*/
 
     const downloadLink = (url) => {
         const link = document.createElement('a');
@@ -442,7 +434,9 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                     <FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                     <FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                 </div>
-                <div style={{ padding: "10px", alignItems: "center", display: "flex", gap: "5px" }}><label>Public ? </label><ToggleSwitch checked={file.permission == 0} onChange={() => changePermission(file, setFile) } /></div>
+                {!file.isAvatar ? (
+                    <div style={{ padding: "10px", alignItems: "center", display: "flex", gap: "5px" }}><label>Public ? </label><ToggleSwitch checked={file.permission == 0} onChange={() => changePermission(file, setFile)} /></div>
+                ): null}
                 {file.fileTypeName === "Image" ? (
                     <>
                         {file.isAvatar ? (
