@@ -442,8 +442,8 @@ namespace Jellyfile.Server.Controllers
                 CreatedAt = f.CreatedAt,
                 FileTypeName = f.FileType?.Name ?? "Autre",
                 Owner = f.CreatedBy?.Username,
-                Permission = fo.Permission,
-                PermissionExpiresAt = fo.PermissionExpiresAt,
+                Permission = fo?.Permission,
+                PermissionExpiresAt = fo?.PermissionExpiresAt,
                 Pins = f.Pins
                     .Where(p => !p.ExpiresAt.HasValue || p.ExpiresAt > DateTime.UtcNow)
                     .Select(p =>
@@ -1176,6 +1176,52 @@ namespace Jellyfile.Server.Controllers
         {
             public int Permission { get; set; }
         }
+
+
+        [Authorize]
+        [HttpPut("{uuid}/{fileName}/move")]
+        public async Task<IActionResult> MoveFile(string uuid, string fileName, [FromBody] MoveFileDto dto)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null) return Unauthorized(new { message = "Pas de session" });
+
+            var dbFile = await _db.Files
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
+            if (dbFile == null) return NotFound(new { message = "Fichier introuvable" });
+
+            var user = await _db.Users.FindAsync(sessionUserId.Value);
+            if (user == null) return Unauthorized();
+
+            bool isAdmin = string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+            bool isCreator = dbFile.CreatedById == sessionUserId.Value;
+
+            if (!isCreator && !isAdmin)
+                return StatusCode(403, new { message = "Accès refusé" });
+
+            if (string.IsNullOrEmpty(dto?.TargetFolderUuid))
+                return BadRequest(new { message = "TargetFolderUuid requis" });
+
+            var targetFolder = await _db.Folders.FirstOrDefaultAsync(f => f.Uuid == dto.TargetFolderUuid);
+            if (targetFolder == null)
+                return BadRequest(new { message = "Dossier cible introuvable" });
+
+            // Optionnel : empêcher de déplacer dans un dossier racine qui n'appartient pas à l'utilisateur
+            if (!isAdmin && targetFolder.OwnerId != dbFile.CreatedById)
+                return StatusCode(403, new { message = "Impossible de déplacer dans ce dossier" });
+
+            // Mise à jour en DB (ne déplace pas physiquement le fichier sur le disque)
+            dbFile.ParentFolderId = targetFolder.Id;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { uuid = dbFile.Uuid, newParentUuid = targetFolder.Uuid });
+        }
+
+        public class MoveFileDto
+        {
+            public string TargetFolderUuid { get; set; }
+        }
+
 
     }
 }

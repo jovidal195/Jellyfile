@@ -24,6 +24,89 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [folderToDelete, setFolderToDelete] = useState(null);
 
+    // state pour highlight du dossier
+    const [dragOverFolderUuid, setDragOverFolderUuid] = useState(null);
+
+    const handleDragStart = (e, node) => {
+        const payload = JSON.stringify({
+            uuid: node.Uuid || node.uuid,
+            name: node.Name || node.name
+        });
+        try {
+            e.dataTransfer.setData("application/json", payload);
+            e.dataTransfer.setData("text/plain", payload); // fallback
+            e.dataTransfer.effectAllowed = "move";
+        } catch (err) {
+            console.warn("dataTransfer setData failed", err);
+        }
+    };
+
+    const handleDragEnd = (e) => {
+        setDragOverFolderUuid(null);
+    };
+
+    const handleFolderDragEnter = (e, folderNode) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverFolderUuid(folderNode?.Uuid || folderNode?.uuid);
+    };
+
+    const handleFolderDragOver = (e, folderNode) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleFolderDragLeave = (e, folderNode) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverFolderUuid(prev => {
+            const id = folderNode?.Uuid || folderNode?.uuid;
+            return prev === id ? null : prev;
+        });
+    };
+
+    const handleFolderDrop = async (e, folderNode) => {
+        e.preventDefault();
+        // pas de closest ici : on utilise directement le node passé par le render
+        if (!folderNode) return;
+
+        const raw = e.dataTransfer.getData("application/json") || e.dataTransfer.getData("text/plain");
+        if (!raw) return;
+        let payload;
+        try { payload = JSON.parse(raw); } catch { return; }
+
+        const fileUuid = payload.uuid;
+        const fileName = payload.name;
+        if (!fileUuid || !fileName) return;
+
+        const targetUuid = folderNode?.Uuid || folderNode?.uuid || null;
+
+        // API call pour déplacer
+        try {
+            const res = await fetch(`/api/files/${fileUuid}/${encodeURIComponent(fileName)}/move`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ targetFolderUuid: targetUuid })
+            });
+
+            if (!res.ok) {
+                const js = res.headers.get("content-type")?.includes("application/json") ? await res.json() : null;
+                toast("error", js?.message || "Erreur déplacement fichier");
+                return;
+            }
+
+            await reloadTree();
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur réseau lors du déplacement");
+        } finally {
+            setDragOverFolderUuid(null);
+        }
+    };
+
+
+
     const toast = useToast();
 
     const fileTypeIcons = {
@@ -164,9 +247,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
             } else {
                 // on est dans un dossier ; trouver le dossier courant par UUID et y ajouter le sous-dossier
                 const current = stack[stack.length - 1];
-                console.log(current);
                 const target = findNodeByUuid(newTree, current?.Uuid || current?.uuid);
-                console.log(target)
                 if (target) {
                     target.files = target.files || [];
                     target.files.push({
@@ -209,33 +290,91 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         const displayName = name.length > 21 ? name.slice(0, 18) + "..." : name;
         const icon = fileTypeIcons[node?.fileTypeName || node?.FileTypeName] || faFile;
         return (
-            <div key={key} className="file clickable-tree" style={{ paddingLeft: depth > 0 ? "0px" : "20px" }}
-                onClick={() => displayFilePage(node, setFile)}>
+            <div
+                key={key}
+                className="file clickable-tree"
+                style={{ paddingLeft: depth > 0 ? "0px" : "20px" }}
+                onClick={() => displayFilePage(node, setFile)}
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, node)}
+                onDragEnd={handleDragEnd}
+            >
                 <FontAwesomeIcon icon={icon} /> {displayName}
             </div>
         );
     };
 
-    const renderFolderItem = (node, key, depth, isTopLevelFolder = false) => {
-        const name = getNodeName(node);
-        const displayName = name.length > 21 ? name.slice(0, 18) + "..." : name;
-        return (
-            <div key={key} className="folder">
-                <div className="clickable-tree folder-tree"
-                    style={{ paddingLeft: depth > 0 ? "20px" : "0px" }}>
-                    <FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} />{" "}
-                    <span style={{ cursor: "pointer" }} onClick={() => enterFolder(node)}>{displayName}</span>
-                    {depth === 0 && isTopLevelFolder && node.name !== "Shared" && (
-                        <FontAwesomeIcon
-                            icon={faFolderPlus}
-                            style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}
-                            onClick={(e) => { e.stopPropagation(); handleAddFolder(node); }}
-                        />
-                    )}
-                </div>
-            </div>
-        );
+    const handleTreeDragOverCapture = (e) => {
+        const folderEl = e.target.closest(".folder, .root-link");
+        if (!folderEl) return;
+        // autorise le drop
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        const uuid = folderEl.dataset.folderUuid;
+        // utile pour debug / UI highlight
+        // console.log("tree dragover on folder", uuid, e.target);
+        setDragOverFolderUuid(uuid);
     };
+
+    const handleTreeDropCapture = async (e) => {
+        const folderEl = e.target.closest(".folder, .root-link");
+        
+        if (!folderEl) return;
+        e.preventDefault();
+
+        const raw = e.dataTransfer.getData("application/json") || e.dataTransfer.getData("text/plain");
+        if (!raw) {
+            console.warn("drop: no payload");
+            return;
+        }
+
+        let payload;
+        try { payload = JSON.parse(raw); } catch (err) {
+            console.warn("drop: invalid payload", err);
+            return;
+        }
+
+        const fileUuid = payload.uuid;
+        const fileName = payload.name;
+        const targetFolderUuid = folderEl.dataset.folderUuid;
+
+        if (!fileUuid || !fileName || !targetFolderUuid) return;
+
+        try {
+            const res = await fetch(`/api/files/${fileUuid}/${encodeURIComponent(fileName)}/move`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ targetFolderUuid })
+            });
+
+            if (!res.ok) {
+                const js = res.headers.get("content-type")?.includes("application/json") ? await res.json() : null;
+                toast("error", js?.message || "Erreur déplacement fichier");
+                return;
+            }
+
+            await reloadTree();
+        } catch (err) {
+            console.error("drop error", err);
+            toast("error", "Erreur réseau lors du déplacement");
+        } finally {
+            setDragOverFolderUuid(null);
+        }
+    };
+
+    const findParentUuid = (nodes, childUuid) => {
+        if (!Array.isArray(nodes) || !childUuid) return null;
+        for (const n of nodes) {
+            const children = getChildren(n) || [];
+            for (const c of children) {
+                if (getUuid(c) === childUuid) return getUuid(n) || null;
+            }
+            const deeper = findParentUuid(children, childUuid);
+            if (deeper) return deeper;
+        }
+        return null;
+    };
+
 
     // view builder: returns array of nodes to display for the current view
     // when stack empty -> show each top-level folder expanded (its children displayed),
@@ -253,7 +392,8 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
                 name: getNodeName(rootNode),
                 files: sortChildren(getChildren(rootNode)),
                 _original: rootNode,
-                _isTopLevel: true
+                _isTopLevel: true,
+                Uuid: getUuid(rootNode)
             }));
         } else {
             // Remap current to the instance inside localTree when possible (stack entries may be old refs)
@@ -261,7 +401,21 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
             const currentUuid = current?.Uuid || current?.uuid || null;
             const currentInTree = currentUuid ? findNodeByUuid(baseTree, currentUuid) : current;
             const children = sortChildren(getChildren(currentInTree || current));
-            const upNode = { _isUp: true, type: "up", name: "../" };
+
+
+            let parentUuid = null;
+            if (stack.length >= 2) {
+                parentUuid = getUuid(stack[stack.length - 2]) || null;
+            } else {
+                // try direct parent fields then search the baseTree for a parent that contains current
+                parentUuid = currentInTree?.ParentFolderUuid || currentInTree?.ParentUuid || null;
+                if (!parentUuid && currentUuid) {
+                    // search baseTree for parent containing this node
+                    parentUuid = findParentUuid(baseTree, currentUuid);
+                }
+            }
+
+            const upNode = { _isUp: true, type: "up", name: "../", targetUuid: parentUuid };
 
             const headerNode = {
                 _isParentHeader: true,
@@ -276,8 +430,24 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
     // single recursive renderer for items in the current view
     const renderViewItem = (node, idx, depth = 0) => {
         if (node._isUp) {
+            const targetUuid = node.targetUuid || null;
+
+            // create a minimal folder-like object to pass to your existing handlers
+            const minimalFolderNode = targetUuid ? { Uuid: targetUuid, uuid: targetUuid } : null;
+
             return (
-                <div key={`up-${idx}`} className="root-link clickable-tree" style={{ paddingLeft: "20px" }} onClick={goUp}>
+                <div
+                    key={`up-${idx}`}
+                    className={`folder root-link clickable-tree ${dragOverFolderUuid === targetUuid ? 'drag-over' : ''}`}
+                    style={{ paddingLeft: "20px" }}
+                    onClick={goUp}
+                    // make droppable only if we have a parentUuid
+                    data-folder-uuid={targetUuid || ""}
+                    onDragEnter={targetUuid ? (e) => handleFolderDragEnter(e, minimalFolderNode) : undefined}
+                    onDragOver={targetUuid ? (e) => handleFolderDragOver(e, minimalFolderNode) : undefined}
+                    onDragLeave={targetUuid ? (e) => handleFolderDragLeave(e, minimalFolderNode) : undefined}
+                    onDrop={targetUuid ? (e) => handleFolderDrop(e, minimalFolderNode) : undefined}
+                >
                     <FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {node.name}
                 </div>
             );
@@ -319,7 +489,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
             const headerKey = `wrapper-${idx}`;
             const children = node.files || [];
             return (
-                <div key={headerKey} className="folder">
+                <div key={headerKey} className="folder" data-folder-uuid={node?.Uuid || node?.uuid}>
                     <div className="clickable-tree folder-tree">
                         <FontAwesomeIcon icon={faFolderOpen} style={{ color: "var(--login-button-hover)" }} /> {node.name}
                         {node._isTopLevel && node._original.name !== "Shared" && (
@@ -341,15 +511,31 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         const key = `node-${idx}-${getNodeName(node)}`;
 
         if (type === "folder") {
+            const folderUuid = getUuid(node) || ""; // string (ou "")
+            const isDragOver = dragOverFolderUuid === folderUuid;
+
             return (
-                <div key={key} className="folder">
-                    <div className="clickable-tree folder-tree" style={{ paddingLeft: depth > 0 ? "0px" : "20px" }}>
+                <div
+                    key={key}
+                    className="folder"
+                    data-folder-uuid={folderUuid || undefined} // undefined si vide -> pas d'attribut
+                >
+                    <div
+                        className={`clickable-tree folder-tree ${isDragOver ? 'drag-over' : ''}`}
+                        style={{ paddingLeft: depth > 0 ? "0px" : "20px" }}
+                        onClick={() => enterFolder(node)}
+                        onDragEnter={(e) => folderUuid && handleFolderDragEnter(e, node)}
+                        onDragOver={(e) => folderUuid && handleFolderDragOver(e, node)}
+                        onDragLeave={(e) => folderUuid && handleFolderDragLeave(e, node)}
+                        onDrop={(e) => folderUuid && handleFolderDrop(e, node)}
+                    >
                         <FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} />{" "}
-                        <span style={{ cursor: "pointer" }} onClick={() => enterFolder(node)}>{getNodeName(node)}</span>
+                        <span style={{ cursor: "pointer" }}>{getNodeName(node)}</span>
                     </div>
                 </div>
             );
         }
+
 
         if (type === "file") {
             return renderFileItem(node, key, depth);
@@ -460,10 +646,24 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         });
     }, [tree]);
 
+    useEffect(() => {
+        const container = document.querySelector(".left-box");
+        const cb = (e) => {
+            e.preventDefault();
+        };
+        container.addEventListener("dragover", cb, true); // true = capture
+        return () => container.removeEventListener("dragover", cb, true);
+    }, []);
 
     return (
         <div className="left-box">
-            {currentItems.map((item, idx) => renderViewItem(item, idx, 0))}
+            <div
+                onDragOverCapture={handleTreeDragOverCapture}
+                onDropCapture={handleTreeDropCapture}
+                onDragLeaveCapture={() => setDragOverFolderUuid(null)}
+            >
+                {currentItems.map((item, idx) => renderViewItem(item, idx, 0))}
+            </div>
             <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
                 <h3>Supprimer le dossier</h3>
 

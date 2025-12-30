@@ -9,3 +9,38 @@
 .file-tree, .file-item {
     padding-left: 10px;
 }
+
+.folder-tree.drag-over,
+.folder.drag-over {
+    background: rgba(0, 0, 0, 0.04);
+    outline: 1px dashed var(--login-button-hover);
+}
+
+/* DRAG SOURCE (l'élément qu'on déplace) */
+.clickable-tree.drag-source {
+    opacity: 0.45;
+    transform: scale(0.98);
+    transition: opacity 120ms linear, transform 120ms linear;
+    z-index: 50; /* visuel, ne change pas le flux */
+}
+
+/* DROP TARGET visible (sur l'élément qui accepte le drop) */
+.clickable-tree.folder-tree.drag-over,
+.clickable-tree.folder.drag-over {
+    background: rgba(0, 120, 215, 0.08);
+    border-left: 4px solid rgba(0, 120, 215, 0.85);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    border-radius: 4px;
+    transform: translateZ(0);
+}
+
+/* variante plus visible pour racine ../ */
+.clickable-tree.root-link.drag-over {
+    background: rgba(0, 120, 215, 0.10);
+    border-left: 4px solid rgba(0, 120, 215, 0.95);
+}
+
+/* Optionnel : accent pour l'icône fichier pendant drag */
+.file.clickable-tree.drag-source {
+    background: rgba(0,0,0,0.02);
+}
