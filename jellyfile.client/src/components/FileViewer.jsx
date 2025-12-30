@@ -229,13 +229,13 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
 
                 const normalized = normalizePin(data);
 
-                setPinData(prev => [...prev, normalized]);
+                setPinData(prev => [...(prev || []), normalized]);
                 console.log(pinData);
-                setFile(prev => ({ ...prev, pins: [...prev.pins, normalized] }));
+                setFile(prev => ({ ...prev, pins: [...(prev.pins || []), normalized] }));
                 console.log(File);
                 setPinsByFile(prev => ({
                     ...prev,
-                    [file.uuid]: [...(prev[file.uuid] || file.pins), normalized]
+                    [file.uuid]: [...(prev[file.uuid] || file.pins || []), normalized]
                 }));
 
                 setModalOpen(false);
