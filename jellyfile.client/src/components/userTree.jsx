@@ -161,6 +161,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
     };
 
     const goUp = () => {
+        setDragOverFolderUuid(null);
         setStack(prev => {
             if (prev.length === 0) return prev;
             return prev.slice(0, prev.length - 1);
@@ -438,10 +439,12 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
             // create a minimal folder-like object to pass to your existing handlers
             const minimalFolderNode = targetUuid ? { Uuid: targetUuid, uuid: targetUuid } : null;
 
+            const isDragOver = dragOverFolderUuid === targetUuid && targetUuid !== null;
+
             return (
                 <div
                     key={`up-${idx}`}
-                    className={`folder root-link clickable-tree ${dragOverFolderUuid === targetUuid ? 'drag-over' : ''}`}
+                    className={`folder root-link clickable-tree ${isDragOver ? 'drag-over' : ''}`}
                     style={{ paddingLeft: "20px" }}
                     onClick={goUp}
                     // make droppable only if we have a parentUuid
