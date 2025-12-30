@@ -34,38 +34,57 @@ namespace Jellyfile.Server.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] CreateFolderRequest request)
         {
-            // Vérifie que l'utilisateur est loggé
+            _logger.LogInformation("test1");
             var sessionUserId = HttpContext.Session.GetInt32("UserId");
             if (sessionUserId == null)
                 return Unauthorized(new { message = "Pas de session" });
-
+            
+            _logger.LogInformation("test2");
             if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest(new { message = "Nom du dossier requis" });
+
+
+            _logger.LogInformation("test3");
+            // Détermine le dossier parent si fourni
+            int? parentId = null;
+            int ownerId = sessionUserId.Value; // par défaut l'utilisateur courant (admin ici)
+            _logger.LogInformation("sessionUserId {}", sessionUserId);
+            _logger.LogInformation("ownerId {}", ownerId);
+
+
+            if (!string.IsNullOrEmpty(request.ParentFolderUuid))
+            {
+                var parent = await _db.Folders.FirstOrDefaultAsync(f => f.Uuid == request.ParentFolderUuid);
+                if (parent == null)
+                    return BadRequest(new { message = "Dossier parent introuvable" });
+
+                _logger.LogInformation("parent {}", parent);
+
+                parentId = parent.Id;
+                ownerId = parent.OwnerId; // hérite du propriétaire du parent
+                _logger.LogInformation("parent.Id {}", parent.Id);
+                _logger.LogInformation("parent.OwnerId {}", parent.OwnerId);
+            }
+
+            // Vérifie si un dossier du même nom existe déjà pour ce parent + owner
+            var exists = await _db.Folders.AnyAsync(f =>
+                f.Name == request.Name &&
+                f.ParentFolderId == parentId &&
+                f.OwnerId == ownerId
+            );
+
+            if (exists)
+            {
+                return Conflict(new { message = "Un dossier de ce nom existe déjà dans ce répertoire" });
+            }
 
             var folder = new Folder
             {
                 Name = request.Name,
-                Uuid = Guid.NewGuid().ToString()
+                Uuid = Guid.NewGuid().ToString(),
+                ParentFolderId = parentId,
+                OwnerId = ownerId
             };
-
-            if (!string.IsNullOrEmpty(request.ParentFolderUuid))
-            {
-                // Récupère le parent par UUID
-                var parent = await _db.Folders
-                    .FirstOrDefaultAsync(f => f.Uuid == request.ParentFolderUuid);
-
-                if (parent == null)
-                    return BadRequest(new { message = "Dossier parent introuvable" });
-
-                folder.ParentFolderId = parent.Id;
-                folder.OwnerId = parent.OwnerId; // hérite du parent
-            }
-            else
-            {
-                // Root folder pour l'utilisateur courant
-                folder.OwnerId = sessionUserId.Value;
-                folder.ParentFolderId = null;
-            }
 
             _db.Folders.Add(folder);
             await _db.SaveChangesAsync();
@@ -76,6 +95,7 @@ namespace Jellyfile.Server.Controllers
                 folder.Name
             });
         }
+
 
         public class CreateFolderRequest
         {

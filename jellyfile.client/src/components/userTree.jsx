@@ -172,13 +172,16 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         const name = prompt("Nom du nouveau dossier :");
         if (!name) return;
 
+        const parentUuid = currentRoot?.uuid || "";
+
+
         try {
             const res = await fetch("/api/folders/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name,
-                    ParentFolderUuid: currentRoot?.uuid || currentRoot?.Uuid || null
+                    ParentFolderUuid: parentUuid
                 })
             });
 
