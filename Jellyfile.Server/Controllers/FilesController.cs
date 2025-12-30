@@ -7,6 +7,7 @@ using Microsoft.VisualBasic.FileIO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using DbFile = Jellyfile.Server.Models.File;
@@ -1220,6 +1221,68 @@ namespace Jellyfile.Server.Controllers
         public class MoveFileDto
         {
             public string TargetFolderUuid { get; set; }
+        }
+
+
+        [HttpGet("{uuid}/tags")]
+        public async Task<IActionResult> GetFileTags(string uuid)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var file = await _db.Files
+                .Include(f => f.FileTags)
+                    .ThenInclude(ft => ft.Tag)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid);
+
+            if (file == null) return NotFound();
+
+            var isOwner = await _db.FileOwners.AnyAsync(o =>
+                o.FileId == file.Id && o.UserId == sessionUserId.Value);
+
+            if (!isOwner) return Forbid();
+
+            return Ok(file.FileTags.Select(ft => new { ft.Tag.Id, ft.Tag.Name }));
+        }
+
+        [HttpPost("{uuid}/tags")]
+        public async Task<IActionResult> SetFileTags(string uuid, [FromBody] List<string> tagNames)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var file = await _db.Files
+                .Include(f => f.FileTags)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid);
+
+            if (file == null) return NotFound();
+
+            var isOwner = await _db.FileOwners.AnyAsync(o =>
+                o.FileId == file.Id && o.UserId == sessionUserId.Value);
+
+            if (!isOwner) return Forbid();
+
+            file.FileTags.Clear();
+
+            foreach (var name in tagNames
+                .Select(n => n.Trim())
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct())
+            {
+                var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Name == name)
+                          ?? new Tag { Name = name };
+
+                file.FileTags.Add(new FileTag
+                {
+                    FileId = file.Id,
+                    Tag = tag
+                });
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok();
         }
 
 

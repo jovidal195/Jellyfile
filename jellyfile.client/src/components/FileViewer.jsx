@@ -10,6 +10,7 @@ import './FileViewer.css';
 import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
 import Select from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 
 function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink }) {
     const toast = useToast();
@@ -25,6 +26,8 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
     const [expirationEnabled, setExpirationEnabled] = useState(false);
     const [pinToEdit, setPinToEdit] = useState(null);
     const [pinsByFile, setPinsByFile] = useState({});
+    const [tags, setTags] = useState([]); // tous les tags existants pour autocomplétion
+    const [selectedTags, setSelectedTags] = useState(file.tags || []); // tags sélectionnés pour ce fichier
     const pinInputRef = useRef(null);
     const deviceInputRef = useRef(null);
 
@@ -405,12 +408,51 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         }
     };
 
+    const syncFileTags = async (tagsToSync) => {
+        try {
+            await fetch(`/api/files/${file.uuid}/tags`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(tagsToSync.map(t => t.name))
+            });
+        } catch (err) {
+            console.error("Erreur sync tags", err);
+        }
+    };
+
 
     useEffect(() => {
         if (file) {
             setPinData(pinsByFile[file.uuid] || file.pins);
         }
     }, [file]);
+
+    useEffect(() => {
+        if (file.uuid !== undefined) {
+        fetch(`/api/files/${file.uuid}/tags`)
+            .then(r => {
+                if (!r.ok) throw new Error(`Erreur ${r.status}`);
+                return r.json();
+            })
+            .then(data => {
+                if (!Array.isArray(data)) data = [];
+                setSelectedTags(data.map(t => ({ id: t.id, name: t.name })));
+
+                setTags(prev => {
+                    const allNames = new Set(prev.map(t => t.name));
+                    data.forEach(t => allNames.add(t.name));
+                    return Array.from(allNames).map(n => ({ name: n }));
+                });
+            })
+            .catch(err => {
+                console.error("Impossible de charger les tags :", err);
+                setSelectedTags([]);
+            });
+        };
+    }, [file]);
+
+
 
     return (
         <div className="file-viewer submenus">
@@ -447,6 +489,29 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                             src={`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`}
                             alt={file.name}
                         />
+
+                        <CreatableSelect
+                            isMulti
+                            options={tags.map(t => ({ value: t.name, label: t.name }))}
+                            value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                            placeholder="Ajouter des tags..."
+                            onChange={async (values) => {
+                                const mapped = values.map(v => ({ name: v.value }));
+                                setSelectedTags(mapped);
+                                await syncFileTags(mapped);
+                            }}
+                            onCreateOption={async (inputValue) => {
+                                const newTag = { name: inputValue };
+                                const updatedTags = [...selectedTags, newTag];
+                                setTags(prev => [...prev, newTag]);
+                                setSelectedTags(updatedTags);
+                                await syncFileTags(updatedTags);
+                            }}
+                        />
+
+
+
+
                         <form>
                             <div className="line-container"><label>Auteur </label><input type="text"></input></div>
                             <div className="line-container"><span><label>Date de création </label><input type="date"></input></span></div>

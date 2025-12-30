@@ -31,5 +31,7 @@ namespace Jellyfile.Server.Models
 
         public ICollection<FileOwner> Owners { get; set; } = new List<FileOwner>();
         public ICollection<FilePin> Pins { get; set; } = new List<FilePin>();
+        public ICollection<FileTag> FileTags { get; set; } = new List<FileTag>();
+
     }
 }

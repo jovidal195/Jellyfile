@@ -23,6 +23,9 @@ namespace Jellyfile.Server.Infrastructure
 
         public DbSet<Folder> Folders { get; set; }
 
+        public DbSet<Tag> Tags { get; set; }
+        public DbSet<FileTag> FileTags { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Users
@@ -119,6 +122,22 @@ namespace Jellyfile.Server.Infrastructure
                 .HasIndex(f => new { f.OwnerId, f.Name, f.ParentFolderId })
                 .IsUnique();
 
+            modelBuilder.Entity<FileTag>()
+                .HasKey(ft => new { ft.FileId, ft.TagId });
+
+            modelBuilder.Entity<FileTag>()
+                .HasOne(ft => ft.File)
+                .WithMany(f => f.FileTags)
+                .HasForeignKey(ft => ft.FileId);
+
+            modelBuilder.Entity<FileTag>()
+                .HasOne(ft => ft.Tag)
+                .WithMany(t => t.FileTags)
+                .HasForeignKey(ft => ft.TagId);
+
+            modelBuilder.Entity<Tag>()
+                .HasIndex(t => t.Name)
+                .IsUnique();
 
         }
     }
