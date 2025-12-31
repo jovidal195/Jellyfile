@@ -117,3 +117,36 @@
 .shake {
     animation: shake 0.4s;
 }
+
+/* tags */
+.tags-select__control {
+    background-color: var(--interface-leftbox-bg) !important;
+    color: var(--interface-text);
+    border-color: #444;
+}
+
+.tags-select__menu {
+    background-color: var(--interface-bg) !important;
+    color: var(--interface-text) !important;
+}
+
+.tags-select__option {
+    color: var(--interface-text) !important;
+}
+
+.tags-select__option--is-focused {
+    background-color: var(--login-button-bg) !important;
+    color: #fff !important;
+}
+
+.tags-select__multi-value {
+    background-color: var(--interface-bg) !important;
+}
+
+.tags-select__multi-value__label {
+    color: var(--interface-text) !important;
+}
+
+.tags-select__multi-value__remove:hover {
+    //background-color: var(--login-button-bg) !important;
+}

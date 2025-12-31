@@ -23,14 +23,16 @@ namespace Jellyfile.Server.Controllers
         private readonly FileServingService _fileService;
         private readonly IConfiguration _config;
         private readonly UserStorageService _userStorage;
+        private readonly ILogger<FoldersController> _logger;
 
-        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config, UserStorageService userStorage)
+        public FilesController(MyDbContext db, IWebHostEnvironment env, FileServingService fileService, IConfiguration config, UserStorageService userStorage, ILogger<FoldersController> logger)
         {
             _db = db;
             _env = env;
             _fileService = fileService;
             _config = config;
             _userStorage = userStorage;
+            _logger = logger;
         }
 
         [HttpPost("upload")]
@@ -1285,6 +1287,29 @@ namespace Jellyfile.Server.Controllers
             return Ok();
         }
 
+        [HttpGet("tags/search")]
+        public async Task<IActionResult> SearchTags([FromQuery] string? query)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var tagsQuery = _db.Tags.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var q = query.Trim().ToLower();
+                tagsQuery = tagsQuery.Where(t => t.Name.ToLower().Contains(q));
+            }
+
+            var tags = await tagsQuery
+                .OrderBy(t => t.Name)
+                .Take(50)
+                .Select(t => new { t.Id, t.Name })
+                .ToListAsync();
+
+            return Ok(tags);
+        }
 
     }
 }

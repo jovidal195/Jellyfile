@@ -10,7 +10,7 @@ import './FileViewer.css';
 import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
 import Select from 'react-select';
-import CreatableSelect from 'react-select/creatable';
+import AsyncCreatableSelect from 'react-select/async-creatable';
 
 function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink }) {
     const toast = useToast();
@@ -26,8 +26,8 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
     const [expirationEnabled, setExpirationEnabled] = useState(false);
     const [pinToEdit, setPinToEdit] = useState(null);
     const [pinsByFile, setPinsByFile] = useState({});
-    const [tags, setTags] = useState([]); // tous les tags existants pour autocomplétion
-    const [selectedTags, setSelectedTags] = useState(file.tags || []); // tags sélectionnés pour ce fichier
+    const [tags, setTags] = useState([]);
+    const [selectedTags, setSelectedTags] = useState(file.tags || []);
     const pinInputRef = useRef(null);
     const deviceInputRef = useRef(null);
 
@@ -421,37 +421,39 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         }
     };
 
-
     useEffect(() => {
         if (file) {
             setPinData(pinsByFile[file.uuid] || file.pins);
         }
     }, [file]);
 
-    useEffect(() => {
-        if (file.uuid !== undefined) {
-        fetch(`/api/files/${file.uuid}/tags`)
-            .then(r => {
-                if (!r.ok) throw new Error(`Erreur ${r.status}`);
-                return r.json();
-            })
-            .then(data => {
-                if (!Array.isArray(data)) data = [];
-                setSelectedTags(data.map(t => ({ id: t.id, name: t.name })));
 
-                setTags(prev => {
-                    const allNames = new Set(prev.map(t => t.name));
-                    data.forEach(t => allNames.add(t.name));
-                    return Array.from(allNames).map(n => ({ name: n }));
-                });
-            })
+    useEffect(() => {
+        if (!file.uuid) return;
+
+        // récupérer les tags attachés au fichier
+        fetch(`/api/files/${file.uuid}/tags`)
+            .then(r => r.ok ? r.json() : [])
+            .then(fileTags => setSelectedTags(fileTags || []))
             .catch(err => {
-                console.error("Impossible de charger les tags :", err);
+                console.error("Impossible de charger les tags du fichier :", err);
                 setSelectedTags([]);
             });
-        };
-    }, [file]);
 
+        // récupérer tous les tags existants pour le menu
+        const loadTags = async () => {
+            try {
+                const r = await fetch(`/api/files/tags/search?query=`, { credentials: "include" });
+                const all = r.ok ? await r.json() : [];
+                setTags(Array.isArray(all) ? all : []);
+            } catch (err) {
+                console.error("Impossible de charger tous les tags :", err);
+                setTags([]);
+            }
+        };
+
+        loadTags();
+    }, [file]);
 
 
     return (
@@ -490,24 +492,44 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                             alt={file.name}
                         />
 
-                        <CreatableSelect
-                            isMulti
-                            options={tags.map(t => ({ value: t.name, label: t.name }))}
-                            value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
-                            placeholder="Ajouter des tags..."
-                            onChange={async (values) => {
-                                const mapped = values.map(v => ({ name: v.value }));
-                                setSelectedTags(mapped);
-                                await syncFileTags(mapped);
-                            }}
-                            onCreateOption={async (inputValue) => {
-                                const newTag = { name: inputValue };
-                                const updatedTags = [...selectedTags, newTag];
-                                setTags(prev => [...prev, newTag]);
-                                setSelectedTags(updatedTags);
-                                await syncFileTags(updatedTags);
-                            }}
-                        />
+
+                            <AsyncCreatableSelect
+                                isMulti
+                                defaultOptions={tags.map(t => ({ value: t.name, label: t.name }))}
+                                value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                                className="tags-select"
+                                classNamePrefix="tags-select"
+                                placeholder="Ajouter des tags..."
+                                loadOptions={async (inputValue) => {
+                                    // Si input vide, retourner les tags déjà préchargés
+                                    if (!inputValue) {
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return tags
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    }
+
+                                    // Requête côté serveur
+                                    try {
+                                        const r = await fetch(`/api/files/tags/search?query=${encodeURIComponent(inputValue)}`, { credentials: "include" });
+                                        if (!r.ok) return [];
+                                        const data = await r.json();
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return data
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    } catch {
+                                        return [];
+                                    }
+                                }}
+                                onChange={async (values) => {
+                                    const unique = Array.from(new Set(values.map(v => v.value)))
+                                        .map(name => ({ name }));
+                                    setSelectedTags(unique);
+                                    await syncFileTags(unique);
+                                }}
+                            />
+                        
 
 
 
