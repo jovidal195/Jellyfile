@@ -148,6 +148,19 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         });
     };
 
+    const goRoot = async () => {
+        try {
+            const res = await fetch("/api/files/tree");
+            if (!res.ok) throw new Error("Erreur réseau");
+            const initialTree = await res.json();
+            setStack([]);
+            setLocalTree(initialTree);
+        } catch (err) {
+            toast("error", "Impossible de récupérer le tree initial");
+            console.error(err);
+        }
+    };
+
     // Add folder (POST)
     const handleAddFolder = async (currentRoot) => {
         const name = prompt("Nom du nouveau dossier :");
@@ -420,6 +433,18 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
                     onDragOver={targetUuid ? (e) => handleFolderDragOver(e, minimalFolderNode) : undefined}
                     onDragLeave={targetUuid ? (e) => handleFolderDragLeave(e, minimalFolderNode) : undefined}
                     onDrop={targetUuid ? (e) => handleFolderDrop(e, minimalFolderNode) : undefined}
+                >
+                    <FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {node.name}
+                </div>
+            );
+        }
+
+        if (node._isRoot) {
+            return (
+                <div
+                    key={`up-${idx}`}
+                    className={`folder root-link clickable-tree`}
+                    onClick={goRoot}
                 >
                     <FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {node.name}
                 </div>

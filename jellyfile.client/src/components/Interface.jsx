@@ -84,7 +84,7 @@ export default function Interface({ toggleTheme, theme }) {
         leftBox.style.display = "initial";
         const fileZone = document.querySelector(".home");
         fileZone.style.display = "grid";
-
+        setStack([]);
     }
 
     const reloadTree = async () => {

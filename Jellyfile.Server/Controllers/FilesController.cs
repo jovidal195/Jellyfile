@@ -1567,8 +1567,15 @@ namespace Jellyfile.Server.Controllers
                     Type = "folder",
                     IsFolder = true,
                     Name = query,
-                    Files = normalFiles,
-                    Count = normalFiles.Count
+                    Files = new List<object>
+                    {
+                        new
+                        {
+                            _isRoot = true,
+                            Name = "../"
+                        }
+                    }.Concat(normalFiles).ToList(),
+                    Count = normalFiles.Count + 1
                 }
             };
 
