@@ -35,6 +35,10 @@ namespace Jellyfile.Server.Controllers
             _logger = logger;
         }
 
+        /*-----------------------------------
+          Gestion du téléversement
+        ------------------------------------*/
+
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFile([FromForm] IFormFile file, [FromForm] string user, [FromForm] string? compress, [FromForm] string? folderUuid)
         {
@@ -240,6 +244,10 @@ namespace Jellyfile.Server.Controllers
             });
 
         }
+
+        /*-----------------------------------
+          Gestion du drilldown treeview
+        ------------------------------------*/
 
         [HttpGet("tree")]
         public async Task<IActionResult> GetFileTree()
@@ -615,6 +623,9 @@ namespace Jellyfile.Server.Controllers
             };
         }
 
+        /*-----------------------------------
+          Gestion directe des fichiers
+        ------------------------------------*/
 
         [HttpPost("setAvatar/{uuid}/{fileName}")]
         public async Task<IActionResult> SetAvatar(string uuid, string fileName)
@@ -829,6 +840,10 @@ namespace Jellyfile.Server.Controllers
 
             return Ok(new { message = "Fichier supprimé avec succès" });
         }
+
+        /*-----------------------------------
+          Gestion des PIN
+        ------------------------------------*/
 
         [HttpPost("create/Pin/{uuid}/{fileName}")]
         public async Task<IActionResult> CreatePin(string uuid, string fileName, [FromBody] CreatePinDto dto)
@@ -1180,6 +1195,9 @@ namespace Jellyfile.Server.Controllers
             public int Permission { get; set; }
         }
 
+        /*-----------------------------------
+          Drag n Drop dans le tree
+        ------------------------------------*/
 
         [Authorize]
         [HttpPut("{uuid}/{fileName}/move")]
@@ -1225,6 +1243,9 @@ namespace Jellyfile.Server.Controllers
             public string TargetFolderUuid { get; set; }
         }
 
+        /*-----------------------------------
+          Gestion des tags
+        ------------------------------------*/
 
         [HttpGet("{uuid}/tags")]
         public async Task<IActionResult> GetFileTags(string uuid)
@@ -1384,5 +1405,73 @@ namespace Jellyfile.Server.Controllers
             return Ok(tags);
         }
 
+        /*-----------------------------------
+          Gestion de la recherche
+        ------------------------------------*/
+
+        [HttpGet("tags/all-shared")]
+        public async Task<IActionResult> GetSharedTags([FromQuery] string? query)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            // Tags de l'utilisateur
+            var userTagsQuery = _db.Tags
+                .Where(t => t.UserId == sessionUserId.Value);
+
+            // Tags des fichiers dont l'utilisateur est owner
+            var sharedTagsQuery = _db.FileTags
+                .Where(ft => _db.FileOwners.Any(fo => fo.FileId == ft.FileId && fo.UserId == sessionUserId.Value))
+                .Select(ft => ft.Tag);
+
+            // Fusion
+            var mergedQuery = userTagsQuery
+                .Union(sharedTagsQuery)
+                .AsQueryable();
+
+            // Filtrage par query
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var q = query.Trim().ToLower();
+                mergedQuery = mergedQuery.Where(t => t.Name.ToLower().Contains(q));
+            }
+
+            var SharedTags = await mergedQuery
+                .OrderBy(t => t.Name)
+                .Take(5)
+                .Select(t => new { t.Id, t.Name })
+                .ToListAsync();
+
+            return Ok(SharedTags);
+        }
+
+        [HttpGet("search/keyword")]
+        public async Task<IActionResult> GetSearchKeyword([FromQuery] string? query)
+        {
+            var sessionUserId = HttpContext.Session.GetInt32("UserId");
+            if (sessionUserId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var files = await _db.Files
+                .Include(f => f.Owners)
+                .Where(f => f.Owners.Any(fo => fo.UserId == sessionUserId.Value))
+                .ToListAsync();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var q = query.Trim().ToLower();
+                files = files.Where(t => t.Name.ToLower().Contains(q)).ToList();
+            }
+
+            var result = files
+                .OrderBy(t => t.Name)
+                .Take(5)
+                .Select(t => new { t.Uuid, t.Name })
+                .ToList();
+
+
+            return Ok(result);
+        }
     }
 }

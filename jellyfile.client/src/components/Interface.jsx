@@ -6,6 +6,7 @@ import MenuProfil from './menuProfil';
 import MenuUsers from './menuUsers';
 import FileZone from './FileZone';
 import FileViewer from './FileViewer';
+import SearchBar from './SearchBar';
 import UserTree from './userTree';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -107,16 +108,8 @@ export default function Interface({ toggleTheme, theme }) {
             <header className="top-bar">
                 <span onClick={return2main} style={{ "cursor": "pointer", "padding" : "17px"}}>Jellyfile</span>  {/* gauche */}
 
-                <div className="search-container">
-                    <input
-                        type="text"
-                        placeholder="Rechercher..."
-                        onKeyDown={(e) => { if (e.key === 'Enter') console.log('Recherche:', e.target.value) }}
-                    />
-                    <button onClick={() => console.log('Recherche:', document.querySelector('.search-container input').value)}>
-                        <FontAwesomeIcon icon={faMagnifyingGlass} style={{'color': 'var(--interface-text)' }} />
-                    </button>
-                </div>
+                <SearchBar tree={tree} setFile={setFile} />
+                
                 <span className="user-btn" onClick={toggleMenu}>
                     { avatarLink === "" ? (
                         <FontAwesomeIcon icon={faCircleUser} style={{ fontSize: '26px' }} />

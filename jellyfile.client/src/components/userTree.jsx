@@ -18,6 +18,7 @@ import './userTree.css';
 import { displayFilePage } from "../utils/displayFilePage.js";
 import { useToast } from "./ToastProvider";
 import Modal from "./Modal";
+import { findNodeByUuid, findParentUuid, getNodeType, getNodeName, getChildren, getUuid } from '../utils/nodesManager';
 
 function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stack, setStack }) {
     const [localTree, setLocalTree] = useState(tree);
@@ -51,7 +52,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         setDragOverFolderUuid(folderNode?.Uuid || folderNode?.uuid);
     };
 
-    const handleFolderDragOver = (e, folderNode) => {
+    const handleFolderDragOver = (e) => {
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = "move";
@@ -105,8 +106,6 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         }
     };
 
-
-
     const toast = useToast();
 
     const fileTypeIcons = {
@@ -119,25 +118,6 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         "Binary": faFile,
         "Scripts": faFileCode,
         "Fonts": faFileAlt
-    };
-
-    // helpers robustes pour fields venant du backend
-    const getNodeType = (n) => (n?.type || n?.Type || (n?.IsFolder || n?.isFolder ? "folder" : (n?.Files || n?.files ? "folder" : "file"))).toString().toLowerCase();
-    const getNodeName = (n) => n?.name || n?.Name || n?.Name || "";
-    const getChildren = (n) => n?.Files || n?.files || [];
-
-    // helpers (place-les au top du composant userTree)
-    const getUuid = (n) => n?.Uuid || n?.uuid || n?.Id || null;
-
-    const findNodeByUuid = (nodes, uuid) => {
-        if (!nodes || !uuid) return null;
-        for (const n of nodes) {
-            if (getUuid(n) === uuid) return n;
-            const children = n.Files || n.files || [];
-            const found = findNodeByUuid(children, uuid);
-            if (found) return found;
-        }
-        return null;
     };
 
     // order: folders first then files
@@ -364,19 +344,6 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
         } finally {
             setDragOverFolderUuid(null);
         }
-    };
-
-    const findParentUuid = (nodes, childUuid) => {
-        if (!Array.isArray(nodes) || !childUuid) return null;
-        for (const n of nodes) {
-            const children = getChildren(n) || [];
-            for (const c of children) {
-                if (getUuid(c) === childUuid) return getUuid(n) || null;
-            }
-            const deeper = findParentUuid(children, childUuid);
-            if (deeper) return deeper;
-        }
-        return null;
     };
 
 
