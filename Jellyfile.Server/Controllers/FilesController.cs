@@ -623,6 +623,8 @@ namespace Jellyfile.Server.Controllers
             };
         }
 
+
+
         /*-----------------------------------
           Gestion directe des fichiers
         ------------------------------------*/
@@ -1473,5 +1475,105 @@ namespace Jellyfile.Server.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("search/tags")]
+        public async Task<IActionResult> GetTagTree([FromQuery] string? query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest(new { message = "Query manquante" });
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
+            var user = await _db.Users.FindAsync(userId.Value);
+            if (user == null)
+                return Unauthorized(new { message = "Utilisateur introuvable" });
+
+            // =================================================================
+            // Récupère tous les fichiers de l'utilisateur et les partagés
+            // =================================================================
+
+            var files = await _db.Files
+                .Include(f => f.FileType)
+                .Include(f => f.CreatedBy)
+                .Include(f => f.Pins)
+                .Where(f => _db.FileTags
+                    .Where(ft => ft.FileId == f.Id)
+                    .Any(ft => ft.Tag.Name == query)
+                )
+                .AsNoTracking()
+                .ToListAsync();
+
+            var fileOwners = await _db.FileOwners
+                .Where(fo => fo.UserId == user.Id)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var fileOwnerLookup = fileOwners.ToLookup(fo => fo.FileId);
+
+            // Séparer en fichiers normaux et avatars
+            var normalFiles = new List<object>();
+            var avatarFiles = new List<object>();
+            var sharedFiles = new List<object>();
+
+            foreach (var f in files)
+            {
+                var fo = fileOwnerLookup[f.Id].FirstOrDefault();
+                if (f.CreatedById == user.Id)
+                {
+                    if (f.IsAvatar)
+                        avatarFiles.Add(FileNode(f, fo));
+                    else
+                        normalFiles.Add(FileNode(f, fo));
+                }
+                else
+                {
+                    sharedFiles.Add(FileNode(f, fo));
+                }
+            }
+
+            // créer le sous-dossier "Avatars" si nécessaire
+            if (avatarFiles.Any())
+            {
+                normalFiles.Add(new
+                {
+                    Type = "folder",
+                    IsFolder = true,
+                    Name = "Avatars",
+                    Files = avatarFiles,
+                    Count = avatarFiles.Count
+                });
+            }
+
+            // créer le sous-dossier "Shared" si nécessaire
+            if (sharedFiles.Any())
+            {
+                normalFiles.Add(new
+                {
+                    Type = "folder",
+                    IsFolder = true,
+                    Name = "Shared",
+                    Files = sharedFiles,
+                    Count = sharedFiles.Count
+                });
+            }
+
+            // Créer le dossier racine pour le tag
+            var tagTree = new List<object>
+            {
+                new
+                {
+                    Type = "folder",
+                    IsFolder = true,
+                    Name = query,
+                    Files = normalFiles,
+                    Count = normalFiles.Count
+                }
+            };
+
+            return Ok(tagTree);
+        }
+
     }
 }

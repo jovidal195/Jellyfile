@@ -4,7 +4,7 @@ import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { defineNode } from '../utils/nodesManager';
 import { displayFilePage } from "../utils/displayFilePage.js";
 
-export default function SearchBar({ tree, setFile }) {
+export default function SearchBar({ tree, setFile, setTree }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState({ keywords: [], tags: [] });
     const [open, setOpen] = useState(false);
@@ -65,16 +65,38 @@ export default function SearchBar({ tree, setFile }) {
     };
 
 
-    const searchTag = (tag) => {
+    const searchTag = async (tag) => {
         console.log(`Le tag ${tag} a été choisi`);
         setOpen(false);
-    }
+
+        try {
+            const resp = await fetch(`/api/files/search/tags?query=${encodeURIComponent(tag)}`, {
+                credentials: "include"
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ message: resp.statusText }));
+                console.error("Erreur fetch tag tree:", err.message);
+                return;
+            }
+
+            const treeResult = await resp.json();
+            console.log("Tag tree reçu:", treeResult);
+
+            // Exemple : mettre à jour le tree dans ton composant parent
+            setTree(treeResult);
+
+            // Si tu veux directement naviguer dans ce tag
+            // setStack([treeResult[0]]); 
+            // ou gérer comme tu veux
+        } catch (err) {
+            console.error("Erreur réseau fetch tag tree:", err);
+        }
+    };
+
 
     const searchFile = (uuid) => {
-        console.log(`Le uuid ${uuid} a été choisi`);
-        console.log(tree);
         const node = defineNode(tree, uuid);
-        console.log(node);
         displayFilePage(node,setFile);
         setOpen(false);
     }
