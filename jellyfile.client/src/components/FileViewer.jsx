@@ -445,6 +445,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             try {
                 const r = await fetch(`/api/files/tags/search?query=`, { credentials: "include" });
                 const all = r.ok ? await r.json() : [];
+                console.log(all);
                 setTags(Array.isArray(all) ? all : []);
             } catch (err) {
                 console.error("Impossible de charger tous les tags :", err);

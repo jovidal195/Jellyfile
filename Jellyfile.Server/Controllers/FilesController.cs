@@ -1245,7 +1245,17 @@ namespace Jellyfile.Server.Controllers
 
             if (!isOwner) return Forbid();
 
-            return Ok(file.FileTags.Select(ft => new { ft.Tag.Id, ft.Tag.Name }));
+            var creatorId = file.CreatedById;
+            var currentUserId = sessionUserId.Value;
+
+            var visible = file.FileTags
+                .Where(ft => ft.Tag != null
+                    && (ft.Tag.UserId == creatorId || ft.Tag.UserId == currentUserId))
+                .Select(ft => new { ft.Tag.Id, ft.Tag.Name, OwnerId = ft.Tag.UserId })
+                .Distinct()
+                .ToList();
+
+            return Ok(visible);
         }
 
         [HttpPost("{uuid}/tags")]
@@ -1255,37 +1265,93 @@ namespace Jellyfile.Server.Controllers
             if (sessionUserId == null)
                 return Unauthorized(new { message = "Pas de session" });
 
-            var file = await _db.Files
-                .Include(f => f.FileTags)
-                .FirstOrDefaultAsync(f => f.Uuid == uuid);
-
-            if (file == null) return NotFound();
-
-            var isOwner = await _db.FileOwners.AnyAsync(o =>
-                o.FileId == file.Id && o.UserId == sessionUserId.Value);
-
-            if (!isOwner) return Forbid();
-
-            file.FileTags.Clear();
-
-            foreach (var name in tagNames
-                .Select(n => n.Trim())
+            // normalize input
+            var desiredNames = tagNames?
+                .Select(n => n?.Trim())
                 .Where(n => !string.IsNullOrWhiteSpace(n))
-                .Distinct())
+                .Select(n => n!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<string>();
+
+            using var tx = await _db.Database.BeginTransactionAsync();
+            try
             {
-                var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Name == name)
-                          ?? new Tag { Name = name };
+                var file = await _db.Files
+                    .Include(f => f.FileTags)
+                        .ThenInclude(ft => ft.Tag)
+                    .FirstOrDefaultAsync(f => f.Uuid == uuid);
 
-                file.FileTags.Add(new FileTag
+                if (file == null) return NotFound();
+
+                var isOwner = await _db.FileOwners.AnyAsync(o =>
+                    o.FileId == file.Id && o.UserId == sessionUserId.Value);
+
+                if (!isOwner) return Forbid();
+
+                var currentUserId = sessionUserId.Value;
+                var creatorId = file.CreatedById;
+
+                // 1) Remove only FileTags that belong to current user and are NOT in desiredNames
+                var toRemove = file.FileTags
+                    .Where(ft => ft.Tag != null
+                        && ft.Tag.UserId == currentUserId
+                        && !desiredNames.Any(d => string.Equals(d, ft.Tag.Name, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                foreach (var ft in toRemove)
+                    file.FileTags.Remove(ft);
+
+                // 2) Ensure desired tags for current user exist and are attached
+                foreach (var name in desiredNames)
                 {
-                    FileId = file.Id,
-                    Tag = tag
-                });
-            }
+                    // skip if creator already has this tag attached (do not "steal" creator tag)
+                    if (file.FileTags.Any(ft => ft.Tag != null
+                        && string.Equals(ft.Tag.Name, name, StringComparison.OrdinalIgnoreCase)
+                        && ft.Tag.UserId == creatorId))
+                    {
+                        // if creator's tag is already attached, do not create duplicate under current user
+                        continue;
+                    }
 
-            await _db.SaveChangesAsync();
-            return Ok();
+                    // if this user already has it attached -> continue
+                    if (file.FileTags.Any(ft => ft.Tag != null
+                        && string.Equals(ft.Tag.Name, name, StringComparison.OrdinalIgnoreCase)
+                        && ft.Tag.UserId == currentUserId))
+                    {
+                        continue;
+                    }
+
+                    // find existing tag for this user
+                    var tag = await _db.Tags.FirstOrDefaultAsync(t =>
+                        t.UserId == currentUserId && t.Name == name);
+
+                    if (tag == null)
+                    {
+                        tag = new Tag { Name = name, UserId = currentUserId };
+                        _db.Tags.Add(tag);
+                        await _db.SaveChangesAsync(); // ensure tag.Id exists for FK
+                    }
+
+                    // attach
+                    file.FileTags.Add(new FileTag
+                    {
+                        FileId = file.Id,
+                        TagId = tag.Id
+                    });
+                }
+
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return Ok();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
         }
+
 
         [HttpGet("tags/search")]
         public async Task<IActionResult> SearchTags([FromQuery] string? query)
@@ -1294,7 +1360,9 @@ namespace Jellyfile.Server.Controllers
             if (sessionUserId == null)
                 return Unauthorized(new { message = "Pas de session" });
 
-            var tagsQuery = _db.Tags.AsQueryable();
+            var tagsQuery = _db.Tags
+                .AsNoTracking()
+                .Where(t => t.UserId == sessionUserId.Value);
 
             if (!string.IsNullOrWhiteSpace(query))
             {
@@ -1306,6 +1374,11 @@ namespace Jellyfile.Server.Controllers
                 .OrderBy(t => t.Name)
                 .Take(50)
                 .Select(t => new { t.Id, t.Name })
+                .ToListAsync();
+
+            var allTags = await _db.Tags
+                .AsNoTracking()
+                .Select(t => new { t.Id, t.Name, t.UserId })
                 .ToListAsync();
 
             return Ok(tags);
