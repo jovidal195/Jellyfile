@@ -555,6 +555,42 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         />
                         Ton navigateur ne supporte pas la lecture vidéo.
                         </video>
+                        <AsyncCreatableSelect
+                                isMulti
+                                defaultOptions={tags.map(t => ({ value: t.name, label: t.name }))}
+                                value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                                className="tags-select"
+                                classNamePrefix="tags-select"
+                                placeholder="Ajouter des tags..."
+                                loadOptions={async (inputValue) => {
+                                    // Si input vide, retourner les tags déjà préchargés
+                                    if (!inputValue) {
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return tags
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    }
+
+                                    // Requête côté serveur
+                                    try {
+                                        const r = await fetch(`/api/files/tags/search?query=${encodeURIComponent(inputValue)}`, { credentials: "include" });
+                                        if (!r.ok) return [];
+                                        const data = await r.json();
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return data
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    } catch {
+                                        return [];
+                                    }
+                                }}
+                                onChange={async (values) => {
+                                    const unique = Array.from(new Set(values.map(v => v.value)))
+                                        .map(name => ({ name }));
+                                    setSelectedTags(unique);
+                                    await syncFileTags(unique);
+                                }}
+                            />
                         <form>
                             <div className="line-container"><label>Auteur </label><input type="text"></input></div>
                             <div className="line-container"><span><label>Date de création </label><input type="date"></input></span></div>
@@ -575,6 +611,42 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                             />
                             Ton navigateur ne supporte pas la lecture audio.
                         </audio>
+                        <AsyncCreatableSelect
+                                isMulti
+                                defaultOptions={tags.map(t => ({ value: t.name, label: t.name }))}
+                                value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                                className="tags-select"
+                                classNamePrefix="tags-select"
+                                placeholder="Ajouter des tags..."
+                                loadOptions={async (inputValue) => {
+                                    // Si input vide, retourner les tags déjà préchargés
+                                    if (!inputValue) {
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return tags
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    }
+
+                                    // Requête côté serveur
+                                    try {
+                                        const r = await fetch(`/api/files/tags/search?query=${encodeURIComponent(inputValue)}`, { credentials: "include" });
+                                        if (!r.ok) return [];
+                                        const data = await r.json();
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return data
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    } catch {
+                                        return [];
+                                    }
+                                }}
+                                onChange={async (values) => {
+                                    const unique = Array.from(new Set(values.map(v => v.value)))
+                                        .map(name => ({ name }));
+                                    setSelectedTags(unique);
+                                    await syncFileTags(unique);
+                                }}
+                            />
                         <form>
                             <div className="line-container"><label>Auteur/Artiste </label><input type="text"></input></div>
                             <div className="line-container"><label>Album </label><input type="text"></input></div>
@@ -587,7 +659,42 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                 ) : file.fileTypeName === "Document" && file.name.endsWith(".pdf") ? (
                         <>
                             <PDFFlipbook fileUrl={`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`} />
-                         
+                             <AsyncCreatableSelect
+                                    isMulti
+                                    defaultOptions={tags.map(t => ({ value: t.name, label: t.name }))}
+                                    value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                                    className="tags-select"
+                                    classNamePrefix="tags-select"
+                                    placeholder="Ajouter des tags..."
+                                    loadOptions={async (inputValue) => {
+                                        // Si input vide, retourner les tags déjà préchargés
+                                        if (!inputValue) {
+                                            const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                            return tags
+                                                .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                                .map(t => ({ value: t.name, label: t.name }));
+                                        }
+
+                                        // Requête côté serveur
+                                        try {
+                                            const r = await fetch(`/api/files/tags/search?query=${encodeURIComponent(inputValue)}`, { credentials: "include" });
+                                            if (!r.ok) return [];
+                                            const data = await r.json();
+                                            const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                            return data
+                                                .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                                .map(t => ({ value: t.name, label: t.name }));
+                                        } catch {
+                                            return [];
+                                        }
+                                    }}
+                                    onChange={async (values) => {
+                                        const unique = Array.from(new Set(values.map(v => v.value)))
+                                            .map(name => ({ name }));
+                                        setSelectedTags(unique);
+                                        await syncFileTags(unique);
+                                    }}
+                                />
                             <form>
                                 <div className="line-container"><label>Auteur </label><input type="text"></input></div>
                                 <div className="line-container"><label>Editeur </label><input type="text"></input></div>
@@ -598,6 +705,42 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                 ) : file.fileTypeName === "Fonts" ? (
                     <>
                         <FontPreview file={file}/>
+                        <AsyncCreatableSelect
+                                isMulti
+                                defaultOptions={tags.map(t => ({ value: t.name, label: t.name }))}
+                                value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                                className="tags-select"
+                                classNamePrefix="tags-select"
+                                placeholder="Ajouter des tags..."
+                                loadOptions={async (inputValue) => {
+                                    // Si input vide, retourner les tags déjà préchargés
+                                    if (!inputValue) {
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return tags
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    }
+
+                                    // Requête côté serveur
+                                    try {
+                                        const r = await fetch(`/api/files/tags/search?query=${encodeURIComponent(inputValue)}`, { credentials: "include" });
+                                        if (!r.ok) return [];
+                                        const data = await r.json();
+                                        const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                        return data
+                                            .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                            .map(t => ({ value: t.name, label: t.name }));
+                                    } catch {
+                                        return [];
+                                    }
+                                }}
+                                onChange={async (values) => {
+                                    const unique = Array.from(new Set(values.map(v => v.value)))
+                                        .map(name => ({ name }));
+                                    setSelectedTags(unique);
+                                    await syncFileTags(unique);
+                                }}
+                            />
                         <form>
                             <div className="line-container"><label>Auteur </label><input type="text"></input></div>
                             <div className="line-container"><span><label>Date de publication </label><input type="date"></input></span></div>
@@ -605,7 +748,45 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         </form>
                     </>
                 ) : (
-                    <p>Type de fichier non pris en charge</p>
+                    <>
+                        <p>Type de fichier non pris en charge</p>
+                        <AsyncCreatableSelect
+                                    isMulti
+                                    defaultOptions={tags.map(t => ({ value: t.name, label: t.name }))}
+                                    value={selectedTags.map(t => ({ value: t.name, label: t.name }))}
+                                    className="tags-select"
+                                    classNamePrefix="tags-select"
+                                    placeholder="Ajouter des tags..."
+                                    loadOptions={async (inputValue) => {
+                                        // Si input vide, retourner les tags déjà préchargés
+                                        if (!inputValue) {
+                                            const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                            return tags
+                                                .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                                .map(t => ({ value: t.name, label: t.name }));
+                                        }
+
+                                        // Requête côté serveur
+                                        try {
+                                            const r = await fetch(`/api/files/tags/search?query=${encodeURIComponent(inputValue)}`, { credentials: "include" });
+                                            if (!r.ok) return [];
+                                            const data = await r.json();
+                                            const existingNames = new Set(selectedTags.map(t => t.name.toLowerCase()));
+                                            return data
+                                                .filter(t => !existingNames.has(t.name.toLowerCase()))
+                                                .map(t => ({ value: t.name, label: t.name }));
+                                        } catch {
+                                            return [];
+                                        }
+                                    }}
+                                    onChange={async (values) => {
+                                        const unique = Array.from(new Set(values.map(v => v.value)))
+                                            .map(name => ({ name }));
+                                        setSelectedTags(unique);
+                                        await syncFileTags(unique);
+                                    }}
+                                />
+                    </>
                 )}
 
                 <DataTable
