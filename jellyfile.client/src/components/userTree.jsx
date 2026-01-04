@@ -468,14 +468,14 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
             return (
                 <div key={`header-${idx}`} className="clickable-tree folder-tree" style={{ paddingLeft: depth > 0 ? "20px" : "0px", fontWeight: "bold" }}>
                     <FontAwesomeIcon icon={faFolderOpen} style={{ color: "var(--login-button-hover)" }} /> {node.name}
-                    {original.name !== "Shared" && original.name !== "Avatars" && (
+                    {!original.isTag && original.name !== "Shared" && original.name !== "Avatars" && (
                         <FontAwesomeIcon
                             icon={faFolderPlus}
                             style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}
                             onClick={(e) => { e.stopPropagation(); handleAddFolder(original); }}
                         />
                     )}
-                    {original.name !== "Avatars" && (
+                    {!original.isTag && original.name !== "Avatars" && original.name !== "Shared" && (
                         <FontAwesomeIcon
                             icon={faTrash}
                             style={{
@@ -502,7 +502,7 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
                 <div key={headerKey} className="folder" data-folder-uuid={node?.Uuid || node?.uuid}>
                     <div className="clickable-tree folder-tree">
                         <FontAwesomeIcon icon={faFolderOpen} style={{ color: "var(--login-button-hover)" }} /> {node.name}
-                        {node._isTopLevel && node._original.name !== "Shared" && (
+                        {node._isTopLevel && node._original.name !== "Shared" && !node._original.isTag && (
                             <FontAwesomeIcon
                                 icon={faFolderPlus}
                                 style={{ float: "right", paddingTop: "5px", cursor: "pointer" }}

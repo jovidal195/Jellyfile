@@ -1554,7 +1554,8 @@ namespace Jellyfile.Server.Controllers
                     IsFolder = true,
                     Name = "Avatars",
                     Files = avatarFiles,
-                    Count = avatarFiles.Count
+                    Count = avatarFiles.Count,
+                    isTag = true
                 });
             }
 
@@ -1576,7 +1577,8 @@ namespace Jellyfile.Server.Controllers
                             IsFolder = true,
                             Name = group.Key, // le nom du créateur
                             Files = group.ToList(),
-                            Count = group.Count()
+                            Count = group.Count(),
+                            isTag = true
                         });
                     }
                 }
@@ -1610,7 +1612,8 @@ namespace Jellyfile.Server.Controllers
                             Name = "../"
                         }
                     }.Concat(normalFiles).ToList(),
-                    Count = normalFiles.Count + 1
+                    Count = normalFiles.Count + 1,
+                    isTag = true
                 }
             };
 
