@@ -1,5 +1,5 @@
 ﻿import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload, faDice, faUserGroup, faMobileScreenButton, faShareAlt } from '@fortawesome/free-solid-svg-icons';
+import { faCircleLeft, faFolder, faFolderOpen, faFile, faFileImage, faFileVideo, faFileAudio, faFilePdf, faFileArchive, faFileCode, faFileAlt, faTrashCan, faDownload, faDice, faUserGroup, faMobileScreenButton, faShareAlt, faCircleUser } from '@fortawesome/free-solid-svg-icons';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PDFFlipbook from './PDFFlipbook';
@@ -478,12 +478,20 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                     <FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                     <FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                 </div>
-                <img alt="Avatar" class="avatar-menu" src={`/api/files/avatar/${file.owner}?t=${Date.now()}`} style={{ marginBottom: "0px" }} title={`ce fichier à été créer par ${file.owner}`} onError={(e) => {
-                    e.currentTarget.onerror = null; // empêche boucle infinie si fallback échoue
-                    e.currentTarget.src = "/default-avatar.jpg"; // chemin vers l'image par défaut
-                    e.currentTarget.style.height = "30px";
-                    e.currentTarget.style.width = "30px";
-                }} />
+                {file.owner !== undefined && (
+                    <div className="owner-avatar-container" title={`Ce fichier a été créé par ${file.owner}`}>
+                        <img
+                            alt="Avatar"
+                            className="owner-avatar-img"
+                            src={`/api/files/avatar/${file.owner}?t=${Date.now()}`}
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                e.currentTarget.parentNode.classList.add("no-owner-avatar");
+                            }}
+                        />
+                        <FontAwesomeIcon icon={faCircleUser} className="owner-avatar-fallback" style={{ fontSize: '26px' }} />
+                    </div>
+                )}
                 {!file.isAvatar ? (
                     <div style={{ padding: "10px", alignItems: "center", display: "flex", gap: "5px" }}><label>Public ? </label><ToggleSwitch checked={file.permission == 0} onChange={() => changePermission(file, setFile)} /></div>
                 ): null}
