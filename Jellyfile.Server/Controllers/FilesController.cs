@@ -1311,7 +1311,10 @@ namespace Jellyfile.Server.Controllers
                 var isOwner = await _db.FileOwners.AnyAsync(o =>
                     o.FileId == file.Id && o.UserId == sessionUserId.Value);
 
-                if (!isOwner) return Forbid();
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == sessionUserId.Value);
+                if (user == null) return Forbid();
+
+                if (!isOwner && user.Role!="Admin") return Forbid();
 
                 var currentUserId = sessionUserId.Value;
                 var creatorId = file.CreatedById;
@@ -1506,10 +1509,13 @@ namespace Jellyfile.Server.Controllers
                 .Include(f => f.FileType)
                 .Include(f => f.CreatedBy)
                 .Include(f => f.Pins)
-                .Where(f => _db.FileTags
-                    .Where(ft => ft.FileId == f.Id)
-                    .Any(ft => ft.Tag.Name == query)
-                    && (
+                .Where(f => 
+                    _db.FileTags
+                        .Where(ft => ft.FileId == f.Id)
+                        .Any(ft => ft.Tag.Name == query &&
+                                   (ft.Tag.UserId == f.CreatedById || ft.Tag.UserId == user.Id))
+                    &&
+                    (
                         f.CreatedById == user.Id
                         ||
                         _db.FileOwners.Any(fo => fo.FileId == f.Id && fo.UserId == user.Id)
@@ -1519,6 +1525,7 @@ namespace Jellyfile.Server.Controllers
                 )
                 .AsNoTracking()
                 .ToListAsync();
+
 
             var fileOwners = await _db.FileOwners
                 .Where(fo => fo.UserId == user.Id)
