@@ -136,8 +136,7 @@ namespace Jellyfile.Server.Infrastructure
                 .HasForeignKey(ft => ft.TagId);
 
             modelBuilder.Entity<Tag>()
-                .HasIndex(t => t.Name)
-                .IsUnique();
+                .HasIndex(t => t.Name);
 
         }
     }

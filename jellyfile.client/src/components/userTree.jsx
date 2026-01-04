@@ -123,6 +123,14 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
     // order: folders first then files
     const sortChildren = (children) => {
         const childList = children.slice(); // copy
+
+        // extraire ../ s'il existe
+        const upNodeIndex = childList.findIndex(c => c._isRoot || c._isUp);
+        let upNode = null;
+        if (upNodeIndex !== -1) {
+            upNode = childList.splice(upNodeIndex, 1)[0];
+        }
+
         childList.sort((a, b) => {
             const ta = getNodeType(a) === "folder" ? 0 : 1;
             const tb = getNodeType(b) === "folder" ? 0 : 1;
@@ -131,6 +139,10 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
             const nb = getNodeName(b).toLowerCase();
             return na.localeCompare(nb);
         });
+
+        // remettre ../ en premier
+        if (upNode) childList.unshift(upNode);
+
         return childList;
     };
 

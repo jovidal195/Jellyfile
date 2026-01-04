@@ -529,9 +529,6 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                                     await syncFileTags(unique);
                                 }}
                             />
-                        
-
-
 
 
                         <form>

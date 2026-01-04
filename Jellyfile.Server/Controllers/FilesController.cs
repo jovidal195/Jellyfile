@@ -1056,7 +1056,6 @@ namespace Jellyfile.Server.Controllers
             return Ok(new { authenticated = false, file = fileObj });
         }
 
-
         private string ComputeAccessKey(int fileId, string pin)
         {
             var secret = _config["InviteSecret"];
@@ -1327,19 +1326,20 @@ namespace Jellyfile.Server.Controllers
                 // 2) Ensure desired tags for current user exist and are attached
                 foreach (var name in desiredNames)
                 {
-                    // skip if creator already has this tag attached (do not "steal" creator tag)
-                    if (file.FileTags.Any(ft => ft.Tag != null
+                    var creatorTagSAttached = file.FileTags.Any(ft => ft.Tag != null
                         && string.Equals(ft.Tag.Name, name, StringComparison.OrdinalIgnoreCase)
-                        && ft.Tag.UserId == creatorId))
+                        && ft.Tag.UserId == creatorId);
+
+                    if (creatorTagSAttached)
                     {
-                        // if creator's tag is already attached, do not create duplicate under current user
                         continue;
                     }
 
-                    // if this user already has it attached -> continue
-                    if (file.FileTags.Any(ft => ft.Tag != null
+                    var currentUserTagSAttached = file.FileTags.Any(ft => ft.Tag != null
                         && string.Equals(ft.Tag.Name, name, StringComparison.OrdinalIgnoreCase)
-                        && ft.Tag.UserId == currentUserId))
+                        && ft.Tag.UserId == currentUserId);
+
+                    if (currentUserTagSAttached)
                     {
                         continue;
                     }
@@ -1347,12 +1347,11 @@ namespace Jellyfile.Server.Controllers
                     // find existing tag for this user
                     var tag = await _db.Tags.FirstOrDefaultAsync(t =>
                         t.UserId == currentUserId && t.Name == name);
-
                     if (tag == null)
                     {
                         tag = new Tag { Name = name, UserId = currentUserId };
                         _db.Tags.Add(tag);
-                        await _db.SaveChangesAsync(); // ensure tag.Id exists for FK
+                        await _db.SaveChangesAsync();
                     }
 
                     // attach
@@ -1368,8 +1367,9 @@ namespace Jellyfile.Server.Controllers
 
                 return Ok();
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError("PROBLÈME : {}", ex);
                 await tx.RollbackAsync();
                 throw;
             }
@@ -1418,35 +1418,40 @@ namespace Jellyfile.Server.Controllers
             if (sessionUserId == null)
                 return Unauthorized(new { message = "Pas de session" });
 
-            // Tags de l'utilisateur
-            var userTagsQuery = _db.Tags
-                .Where(t => t.UserId == sessionUserId.Value);
-
-            // Tags des fichiers dont l'utilisateur est owner
-            var sharedTagsQuery = _db.FileTags
-                .Where(ft => _db.FileOwners.Any(fo => fo.FileId == ft.FileId && fo.UserId == sessionUserId.Value))
-                .Select(ft => ft.Tag);
-
-            // Fusion
-            var mergedQuery = userTagsQuery
-                .Union(sharedTagsQuery)
-                .AsQueryable();
-
-            // Filtrage par query
-            if (!string.IsNullOrWhiteSpace(query))
-            {
-                var q = query.Trim().ToLower();
-                mergedQuery = mergedQuery.Where(t => t.Name.ToLower().Contains(q));
-            }
-
-            var SharedTags = await mergedQuery
-                .OrderBy(t => t.Name)
-                .Take(5)
+            // Récupérer tous les tags de l'utilisateur
+            var userTags = await _db.Tags
+                .Where(t => t.UserId == sessionUserId.Value)
                 .Select(t => new { t.Id, t.Name })
                 .ToListAsync();
 
-            return Ok(SharedTags);
+            // Récupérer les tags attachés aux fichiers dont il est owner
+            var sharedTags = await _db.FileTags
+                .Where(ft => _db.FileOwners.Any(fo => fo.FileId == ft.FileId && fo.UserId == sessionUserId.Value))
+                .Select(ft => new { ft.Tag.Id, ft.Tag.Name })
+                .ToListAsync();
+
+            // Fusionner et enlever les doublons par Name
+            var merged = userTags
+                .Concat(sharedTags)
+                .GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(t => t.Name)
+                .ToList();
+
+            // Filtrage par query si besoin
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var q = query.Trim().ToLower();
+                merged = merged.Where(t => t.Name.ToLower().Contains(q)).ToList();
+            }
+
+            // Limite 5 résultats
+            var result = merged.Take(5);
+
+            return Ok(result);
         }
+
+
 
         [HttpGet("search/keyword")]
         public async Task<IActionResult> GetSearchKeyword([FromQuery] string? query)
@@ -1501,6 +1506,13 @@ namespace Jellyfile.Server.Controllers
                 .Where(f => _db.FileTags
                     .Where(ft => ft.FileId == f.Id)
                     .Any(ft => ft.Tag.Name == query)
+                    && (
+                        f.CreatedById == user.Id
+                        ||
+                        _db.FileOwners.Any(fo => fo.FileId == f.Id && fo.UserId == user.Id)
+                        ||
+                        user.Role == "Admin"
+                    )
                 )
                 .AsNoTracking()
                 .ToListAsync();
@@ -1549,15 +1561,38 @@ namespace Jellyfile.Server.Controllers
             // créer le sous-dossier "Shared" si nécessaire
             if (sharedFiles.Any())
             {
-                normalFiles.Add(new
+                if (user.Role=="Admin")
                 {
-                    Type = "folder",
-                    IsFolder = true,
-                    Name = "Shared",
-                    Files = sharedFiles,
-                    Count = sharedFiles.Count
-                });
+                    // grouper par créateur
+                    var groupedByCreator = ((IEnumerable<dynamic>)sharedFiles)
+                        .GroupBy(f => f.Owner) // CreatedByName doit être exposé dans FileNode ou accessible
+                        .ToList();
+
+                    foreach (var group in groupedByCreator)
+                    {
+                        normalFiles.Add(new
+                        {
+                            Type = "folder",
+                            IsFolder = true,
+                            Name = group.Key, // le nom du créateur
+                            Files = group.ToList(),
+                            Count = group.Count()
+                        });
+                    }
+                }
+                else
+                {
+                    normalFiles.Add(new
+                    {
+                        Type = "folder",
+                        IsFolder = true,
+                        Name = "Shared",
+                        Files = sharedFiles,
+                        Count = sharedFiles.Count
+                    });
+                }
             }
+
 
             // Créer le dossier racine pour le tag
             var tagTree = new List<object>
