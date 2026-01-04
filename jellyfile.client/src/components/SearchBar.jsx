@@ -4,7 +4,7 @@ import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { defineNode } from '../utils/nodesManager';
 import { displayFilePage } from "../utils/displayFilePage.js";
 
-export default function SearchBar({ tree, setFile, setTree }) {
+export default function SearchBar({ tree, setFile, setTree, setStack }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState({ keywords: [], tags: [] });
     const [open, setOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function SearchBar({ tree, setFile, setTree }) {
 
 
     const searchTag = async (tag) => {
-        console.log(`Le tag ${tag} a été choisi`);
+        //console.log(`Le tag ${tag} a été choisi`);
         setOpen(false);
 
         try {
@@ -81,13 +81,13 @@ export default function SearchBar({ tree, setFile, setTree }) {
             }
 
             const treeResult = await resp.json();
-            console.log("Tag tree reçu:", treeResult);
+            //console.log("Tag tree reçu:", treeResult);
 
             // Exemple : mettre à jour le tree dans ton composant parent
             setTree(treeResult);
 
             // Si tu veux directement naviguer dans ce tag
-            // setStack([treeResult[0]]); 
+            setStack([]); 
             // ou gérer comme tu veux
         } catch (err) {
             console.error("Erreur réseau fetch tag tree:", err);

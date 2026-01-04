@@ -108,7 +108,7 @@ export default function Interface({ toggleTheme, theme }) {
             <header className="top-bar">
                 <span onClick={return2main} style={{ "cursor": "pointer", "padding" : "17px"}}>Jellyfile</span>  {/* gauche */}
 
-                <SearchBar tree={tree} setFile={setFile} setTree={setTree} />
+                <SearchBar tree={tree} setFile={setFile} setTree={setTree} setStack={setStack} />
                 
                 <span className="user-btn" onClick={toggleMenu}>
                     { avatarLink === "" ? (
