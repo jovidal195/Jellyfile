@@ -479,17 +479,23 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                     <FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                 </div>
                 {file.owner !== undefined && (
-                    <div className="owner-avatar-container" title={`Ce fichier a été créé par ${file.owner}`}>
-                        <img
-                            alt="Avatar"
-                            className="owner-avatar-img"
-                            src={`/api/files/avatar/${file.owner}?t=${Date.now()}`}
+                    <div title={`ce fichier à été créer par ${file.owner}`}>
+                        <img alt="Avatar" src={`/api/files/avatar/${file.owner}?t=${Date.now()}`} style={{ marginBottom: "0px", objectFit: "cover !important", width: "43px", height: "35px", borderRadius:"50%"}}
                             onError={(e) => {
+                                e.currentTarget.onerror = null; // empêche boucle infinie si fallback échoue
                                 e.currentTarget.style.display = "none";
-                                e.currentTarget.parentNode.classList.add("no-owner-avatar");
+                                e.target.nextSibling.style.display = "initial";
+                            }}
+                            onLoad={(e) => {
+                                e.currentTarget.style.display = "initial";
+                                e.target.nextSibling.style.display = "none";
                             }}
                         />
-                        <FontAwesomeIcon icon={faCircleUser} className="owner-avatar-fallback" style={{ fontSize: '26px' }} />
+                        <FontAwesomeIcon 
+                            icon={faCircleUser} 
+                            className="owner-avatar-fallback" 
+                            style={{ fontSize: '30px', display: 'none' }}
+                        />
                     </div>
                 )}
                 {!file.isAvatar ? (

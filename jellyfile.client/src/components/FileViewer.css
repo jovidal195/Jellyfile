@@ -150,29 +150,3 @@
 .tags-select__multi-value__remove:hover {
     //background-color: var(--login-button-bg) !important;
 }
-
-/* file owner avatar handling */
-.owner-avatar-container {
-    position: relative;
-    width: 30px;
-    height: 30px;
-}
-
-.owner-avatar-img,
-.owner-avatar-fallback {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-}
-
-.owner-avatar-fallback {
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: none;
-    color: var(--interface-text);
-}
-
-.owner-avatar-container.no-owner-avatar .owner-avatar-fallback {
-    display: block;
-}
