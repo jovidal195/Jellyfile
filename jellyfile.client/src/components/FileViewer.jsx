@@ -478,6 +478,12 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                     <FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                     <FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                 </div>
+                <img alt="Avatar" class="avatar-menu" src={`/api/files/avatar/${file.owner}?t=${Date.now()}`} style={{ marginBottom: "0px" }} title={`ce fichier à été créer par ${file.owner}`} onError={(e) => {
+                    e.currentTarget.onerror = null; // empêche boucle infinie si fallback échoue
+                    e.currentTarget.src = "/default-avatar.jpg"; // chemin vers l'image par défaut
+                    e.currentTarget.style.height = "30px";
+                    e.currentTarget.style.width = "30px";
+                }} />
                 {!file.isAvatar ? (
                     <div style={{ padding: "10px", alignItems: "center", display: "flex", gap: "5px" }}><label>Public ? </label><ToggleSwitch checked={file.permission == 0} onChange={() => changePermission(file, setFile)} /></div>
                 ): null}
