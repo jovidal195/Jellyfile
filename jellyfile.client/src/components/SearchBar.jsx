@@ -4,7 +4,7 @@ import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { defineNode } from '../utils/nodesManager';
 import { displayFilePage } from "../utils/displayFilePage.js";
 
-export default function SearchBar({ tree, setFile, setTree, setStack }) {
+export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState({ keywords: [], tags: [] });
     const [open, setOpen] = useState(false);
@@ -95,9 +95,17 @@ export default function SearchBar({ tree, setFile, setTree, setStack }) {
     };
 
 
-    const searchFile = (uuid) => {
-        const node = defineNode(tree, uuid);
-        displayFilePage(node,setFile);
+    const searchFile = async(uuid) => {
+        
+        let node = defineNode(tree, uuid);
+        if (node == null) {
+            setStack([]);
+            const freshTree = await reloadTree();
+            node = defineNode(freshTree, uuid);
+            displayFilePage(node, setFile);
+        } else {
+            displayFilePage(node,setFile);
+        }
         setOpen(false);
     }
 
