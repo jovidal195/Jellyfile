@@ -1265,14 +1265,17 @@ namespace Jellyfile.Server.Controllers
             var isOwner = await _db.FileOwners.AnyAsync(o =>
                 o.FileId == file.Id && o.UserId == sessionUserId.Value);
 
-            if (!isOwner) return Forbid();
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == sessionUserId.Value);
+            if (user==null) return Forbid();
+
+            if (!isOwner && user.Role!="Admin") return Forbid();
 
             var creatorId = file.CreatedById;
             var currentUserId = sessionUserId.Value;
 
             var visible = file.FileTags
                 .Where(ft => ft.Tag != null
-                    && (ft.Tag.UserId == creatorId || ft.Tag.UserId == currentUserId))
+                    && (user.Role == "Admin" || ft.Tag.UserId == creatorId || ft.Tag.UserId == currentUserId))
                 .Select(ft => new { ft.Tag.Id, ft.Tag.Name, OwnerId = ft.Tag.UserId })
                 .Distinct()
                 .ToList();
