@@ -561,7 +561,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                 ) : file.fileTypeName === "Video" ? (
                     <>
                         <video
-                            key={file.hash}
+                            key={file.uuid}
                             controls
                             style={{
                                 maxWidth: "80%",
