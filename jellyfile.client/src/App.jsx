@@ -54,7 +54,7 @@ function App() {
                     {user ? (
                         <Route path="/*" element={<Interface toggleTheme={toggleTheme} theme={theme} />} />
                     ) : (
-                        <Route path="/*" element={<LoginPage onLoginSuccess={setUser} />} />
+                        <Route path="/*" element={<LoginPage toggleTheme={toggleTheme} theme={theme}onLoginSuccess={setUser} />} />
                     )}
                     {/* Route pour l’invitation */}
                     <Route path="/invite" element={<InvitePage />} />

@@ -10,7 +10,7 @@ import SearchBar from './SearchBar';
 import UserTree from './userTree';
 import './Interface.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleUser, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+import { faCircleUser } from '@fortawesome/free-solid-svg-icons';
 import { displayFilePage } from "../utils/displayFilePage.js";
 
 
