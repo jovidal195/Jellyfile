@@ -1,10 +1,13 @@
 ﻿import AsyncCreatableSelect from 'react-select/async-creatable';
+import ToggleSwitch from "../ToggleSwitch";
 
 function DefaultViewer({
+    file,
     tags,
     selectedTags,
     setSelectedTags,
-    syncFileTags
+    syncFileTags,
+    updateMetadata
 }) {
     return (
         <>
@@ -44,6 +47,51 @@ function DefaultViewer({
                     await syncFileTags(unique);
                 }}
             />
+            <form>
+                <div className="line-container">
+                    <label>Auteur</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.author || ""}
+                        onChange={async e => updateMetadata({ author: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Date de création</label>
+                    <input
+                        type="date"
+                        value={file.metadata?.creationDate?.split("T")[0] || ""}
+                        onChange={async e => updateMetadata({ creationDate: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Copyright</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.copyrightHolder || ""}
+                        onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Licence</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.license || ""}
+                        onChange={async e => updateMetadata({ license: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                    <label>Généré par IA</label>
+                    <ToggleSwitch
+                        checked={file.metadata?.isAiGenerated}
+                        onChange={async val => updateMetadata({ isAiGenerated: val })}
+                    />
+                </div>
+            </form>
         </>
     );
 }

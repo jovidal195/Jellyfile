@@ -46,7 +46,45 @@ namespace Jellyfile.Server.Infrastructure
             { 5, new[] { "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt", "ods", "odp" } }, // Document
             { 6, new[] { "zip", "rar", "7z", "tar", "gz", "bz2", "xz" } }, // Archive
             { 7, new[] { "exe", "dll", "bin", "com", "class", "so", "o" } }, // Binary / Exécutable
-            { 8, new[] { "js", "ts", "py", "java", "cs", "cpp", "c", "sh", "bat", "ps1", "php", "rb" } }, // Scripts / Code
+            { 8, new[]
+                {
+                    // JavaScript / TypeScript
+                    "js", "mjs", "cjs", "ts", "tsx",
+    
+                    // Python
+                    "py", "pyw", "pyc", "pyo",
+    
+                    // Java / Kotlin
+                    "java", "class", "jar", "kt", "kts",
+    
+                    // C / C++ / C#
+                    "c", "h", "cpp", "cc", "cxx", "hpp", "hxx", "cs",
+    
+                    // Shell / Batch / PowerShell
+                    "sh", "bash", "zsh", "ksh", "csh", "bat", "cmd", "ps1",
+    
+                    // PHP / Ruby / Perl
+                    "php", "php3", "php4", "php5", "phtml", "rb", "rake", "pl", "pm",
+    
+                    // Lua
+                    "lua",
+    
+                    // R / MATLAB
+                    "r", "rmd", "m", "mlx",
+    
+                    // Go / Rust / Zig / D
+                    "go", "rs", "zig", "d",
+    
+                    // Swift
+                    "swift",
+    
+                    // Haskell / F# / OCaml
+                    "hs", "lhs", "fs", "ml", "mli",
+    
+                    // Other / Niche
+                    "scala", "sc", "groovy", "tcl", "vbs", "vb", "elm", "dart", "clj", "cljs", "ex", "exs", "erl", "hrl", "asm", "s"
+                } 
+            },
             { 9, new[] { "ttf", "otf", "woff", "woff2", "eot" } } // Fonts
         };
 

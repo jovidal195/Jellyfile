@@ -626,34 +626,43 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        updateMetadata={updateMetadata}
                     />
                 ) : file.fileTypeName === "Archive" ? (
                     <ArchiveViewer
+                        file={file}
                         tags={tags}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        updateMetadata={updateMetadata}
                     />
                 ) : file.fileTypeName === "Binary" ? (
                     <BinaryViewer
+                        file={file}
                         tags={tags}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        updateMetadata={updateMetadata}
                     />
                 ) : file.fileTypeName === "Scripts" ? (
                     <ScriptViewer
+                        file={file}
                         tags={tags}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        updateMetadata={updateMetadata}
                     />
                 ) : (
                     <DefaultViewer
+                        file={file}
                         tags={tags}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        updateMetadata={updateMetadata}
                     />
                 )}
 

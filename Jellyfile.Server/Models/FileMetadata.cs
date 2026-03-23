@@ -66,5 +66,9 @@ namespace Jellyfile.Server.Models
         
         [MaxLength(50)]
         public string? Version { get; set; }
+
+        /* Métadonnées fonts */
+        public bool IsMonospaced { get; set; } = false;
+        public bool IsSerif { get; set; } = false;
     }
 }

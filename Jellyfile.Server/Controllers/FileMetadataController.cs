@@ -82,6 +82,12 @@ namespace Jellyfile.Server.Controllers
             if (raw.TryGetProperty("version", out var versionProp))
                 entity.Version = versionProp.ValueKind == JsonValueKind.Null ? null : versionProp.GetString();
 
+            if (raw.TryGetProperty("IsMonospaced", out var monospacedProp) && vectorProp.ValueKind != JsonValueKind.Null)
+                entity.IsMonospaced = monospacedProp.GetBoolean();
+
+            if (raw.TryGetProperty("IsSerif", out var serifProp) && vectorProp.ValueKind != JsonValueKind.Null)
+                entity.IsSerif = serifProp.GetBoolean();
+
             await _db.SaveChangesAsync();
 
             return Ok(new
@@ -102,7 +108,9 @@ namespace Jellyfile.Server.Controllers
                 entity.Language,
                 entity.SubtitleLanguage,
                 entity.Type,
-                entity.Version
+                entity.Version,
+                entity.IsMonospaced,
+                entity.IsSerif
             });
         }
     }

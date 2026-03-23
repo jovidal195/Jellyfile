@@ -1,12 +1,14 @@
 ﻿import AsyncCreatableSelect from 'react-select/async-creatable';
 import FontPreview from "../FontPreview";
+import ToggleSwitch from "../ToggleSwitch";
 
 function FontViewer({
     file,
     tags,
     selectedTags,
     setSelectedTags,
-    syncFileTags
+    syncFileTags,
+    updateMetadata
 }) {
     return (
         <>
@@ -50,19 +52,62 @@ function FontViewer({
             <form>
                 <div className="line-container">
                     <label>Auteur</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        value={file.metadata?.author || ""}
+                        onChange={async e => updateMetadata({ author: e.target.value })}
+                    />
                 </div>
 
                 <div className="line-container">
-                    <span>
-                        <label>Date de publication</label>
-                        <input type="date" />
-                    </span>
+                    <label>Date de création</label>
+                    <input
+                        type="date"
+                        value={file.metadata?.creationDate?.split("T")[0] || ""}
+                        onChange={async e => updateMetadata({ creationDate: e.target.value })}
+                    />
                 </div>
 
                 <div className="line-container">
                     <label>Copyright</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        value={file.metadata?.copyrightHolder || ""}
+                        onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Licence</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.license || ""}
+                        onChange={async e => updateMetadata({ license: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                    <label>Généré par IA</label>
+                    <ToggleSwitch
+                        checked={file.metadata?.isAiGenerated}
+                        onChange={async val => updateMetadata({ isAiGenerated: val })}
+                    />
+                </div>
+
+                <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                    <label>Monospaced ?</label>
+                    <ToggleSwitch
+                        checked={file.metadata?.isMonospaced}
+                        onChange={async val => updateMetadata({ IsMonospaced: val })}
+                    />
+                </div>
+
+                <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                    <label>Serif ?</label>
+                    <ToggleSwitch
+                        checked={file.metadata?.isSerif}
+                        onChange={async val => updateMetadata({ IsSerif: val })}
+                    />
                 </div>
             </form>
         </>

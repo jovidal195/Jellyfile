@@ -1,11 +1,52 @@
 ﻿import AsyncCreatableSelect from 'react-select/async-creatable';
+import { useState } from "react";
 
 function ArchiveViewer({
+    file,
     tags,
     selectedTags,
     setSelectedTags,
-    syncFileTags
+    syncFileTags,
+    updateMetadata
 }) {
+
+    const [typeValue, setTypeValue] = useState(
+        file?.metadata?.subtitleLanguage ? { value: file.metadata.subtitleLanguage, label: file.metadata.subtitleLanguage } : null
+    );
+
+    const TYPES_OPTIONS = [
+        "None",        // pas de compression
+        "Deflate",     // très courant, utilisé dans ZIP
+        "Gzip",        // utilisé dans tar.gz, web, Linux
+        "LZMA",        // 7z, haute compression
+        "Bzip2",       // tar.bz2, compression moyenne
+        "Zstandard",   // moderne, rapide, bonne compression
+        "XZ",          // tar.xz, haute compression
+        "LZ4",         // très rapide, moins compressé
+        "Snappy",      // Google, rapide, faible compression
+        "LZO",         // rapide, pour temps réel
+        "PPMd",        // compression texte, rare
+        "LZX",         // ancien Windows CAB
+        "DEFLATE64",   // variante de Deflate
+        "Brotli",      // web, HTTP compression
+        "Zlib",        // bibliothèque Deflate
+        "QuickLZ",     // rapide, peu répandu
+        "ZPAQ",        // archive delta, rare
+        "LZF",         // rapide, léger
+        "PAQ",         // maximale compression, très lent
+        "LZ77",        // historique, base de Deflate
+        "LZ78",        // historique
+        "ArithmeticCoding" // rare, compression maximale pour texte
+    ].map(c => ({ value: c, label: c }));
+
+    const filterOptions = (input) => {
+        const q = (input || "").toLowerCase();
+        if (!q) return TYPES_OPTIONS;
+        return TYPES_OPTIONS.filter(o =>
+            o.label.toLowerCase().includes(q)
+        );
+    };
+
     return (
         <>
             <p>Type de fichier non pris en charge</p>
@@ -44,6 +85,70 @@ function ArchiveViewer({
                     await syncFileTags(unique);
                 }}
             />
+            <form>
+                <div className="line-container">
+                    <label>Auteur</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.author || ""}
+                        onChange={async e => updateMetadata({ author: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Date de création</label>
+                    <input
+                        type="date"
+                        value={file.metadata?.creationDate?.split("T")[0] || ""}
+                        onChange={async e => updateMetadata({ creationDate: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Copyright</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.copyrightHolder || ""}
+                        onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Licence</label>
+                    <input
+                        type="text"
+                        value={file.metadata?.license || ""}
+                        onChange={async e => updateMetadata({ license: e.target.value })}
+                    />
+                </div>
+
+                <div className="line-container">
+                    <label>Compression</label>
+                    <AsyncCreatableSelect
+                        isClearable
+                        cacheOptions
+                        defaultOptions={TYPES_OPTIONS}
+                        loadOptions={async (inputValue) => filterOptions(inputValue)}
+                        value={typeValue}
+                        onChange={(opt) => {
+                            if (opt === null) {
+                                setTypeValue(null);
+                                updateMetadata({ subtitleLanguage: null });
+                                return;
+                            }
+                            setTypeValue(opt);
+                            updateMetadata({ subtitleLanguage: opt.value });
+                        }}
+                        onCreateOption={(inputValue) => {
+                            const custom = { value: inputValue, label: inputValue };
+                            setTypeValue(custom);
+                            updateMetadata({ subtitleLanguage: inputValue });
+                        }}
+                        placeholder="Sélectionnez la méthode de compression ..."
+                        styles={{ menu: (base) => ({ ...base, zIndex: 9999 }) }}
+                    />
+                </div>
+            </form>
         </>
     );
 }

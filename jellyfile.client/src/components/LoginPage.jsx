@@ -28,7 +28,6 @@ export default function LoginPage({ onLoginSuccess, toggleTheme, theme }) {
 
     return (
         <form className="login-container" onSubmit={e => { e.preventDefault(); login(); }}>
-            
             <h2>Connexion</h2>
             <div style={{ display: "flex", flexDirection: "row", alignItems: "center", margin: "20px", justifyContent: "center" }}><FontAwesomeIcon icon={faSun} /><ToggleSwitch onChange={toggleTheme} checked={theme === "dark"} /><FontAwesomeIcon icon={faMoon} /></div>
             {error && <p className="login-error">{error}</p>}
@@ -38,9 +37,6 @@ export default function LoginPage({ onLoginSuccess, toggleTheme, theme }) {
                 {show ? <FontAwesomeIcon icon={faEyeSlash} /> : <FontAwesomeIcon icon={faEye} />}
             </span>
             <button type="submit">Connexion</button>
-            
-
-            
         </form>
     );
 }

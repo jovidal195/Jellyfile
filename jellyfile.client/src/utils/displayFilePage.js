@@ -9,5 +9,5 @@
     fileViewer.style.display = "initial";
 
     setFile(f);
-    console.log(f);
+    //console.log(f);
 };

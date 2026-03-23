@@ -493,7 +493,9 @@ namespace Jellyfile.Server.Controllers
                     meta.Language,
                     meta.SubtitleLanguage,
                     meta.Type,
-                    meta.Version
+                    meta.Version,
+                    meta.IsMonospaced,
+                    meta.IsSerif
                 }
             };
         }
