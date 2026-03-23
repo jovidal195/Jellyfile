@@ -285,6 +285,7 @@ namespace Jellyfile.Server.Controllers
                 .Include(f => f.FileType)
                 .Include(f => f.CreatedBy)
                 .Include(f => f.Pins)
+                .Include(f => f.Metadata)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -442,6 +443,8 @@ namespace Jellyfile.Server.Controllers
 
         private object FileNode(Jellyfile.Server.Models.File f, FileOwner fo)
         {
+            var meta = f.Metadata;
+
             return new
             {
                 Type = "file",
@@ -472,7 +475,26 @@ namespace Jellyfile.Server.Controllers
                             linkPath = accessKey != null ? $"/pin/{f.Uuid}/{accessKey}/{f.Name}" : null,
                             p.MaxDevices
                         };
-                    })
+                    }),
+                Metadata = meta == null ? null : new
+                {
+                    meta.Title,
+                    meta.Author,
+                    meta.IsAiGenerated,
+                    meta.Source,
+                    meta.License,
+                    meta.CopyrightHolder,
+                    meta.CreationDate,
+                    meta.IsVector,
+                    meta.Format,
+                    meta.ColorMode,
+                    meta.DPI,
+                    meta.BitDepth,
+                    meta.Language,
+                    meta.SubtitleLanguage,
+                    meta.Type,
+                    meta.Version
+                }
             };
         }
 
@@ -484,6 +506,7 @@ namespace Jellyfile.Server.Controllers
                 .Include(f => f.FileType)
                 .Include(f => f.CreatedBy)
                 .Include(f => f.Pins)
+                .Include(f => f.Metadata)
                 .AsNoTracking()
                 .ToListAsync();
             var fileOwners = await _db.FileOwners.AsNoTracking().ToListAsync();

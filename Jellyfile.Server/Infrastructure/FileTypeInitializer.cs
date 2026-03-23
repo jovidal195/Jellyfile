@@ -7,15 +7,15 @@ namespace Jellyfile.Server.Infrastructure
     {
         private static readonly FileType[] DefaultFileTypes = new[]
         {
-            new FileType { Id = 1, Name = "Autre", MetadataTableName = null },
-            new FileType { Id = 2, Name = "Image", MetadataTableName = "ImageMetadata" },
-            new FileType { Id = 3, Name = "Video", MetadataTableName = "VideoMetadata" },
-            new FileType { Id = 4, Name = "Audio", MetadataTableName = "AudioMetadata" },
-            new FileType { Id = 5, Name = "Document", MetadataTableName = "DocumentMetadata" },
-            new FileType { Id = 6, Name = "Archive", MetadataTableName = "ArchiveMetadata" },
-            new FileType { Id = 7, Name = "Binary", MetadataTableName = "BinaryMetadata" },
-            new FileType { Id = 8, Name = "Scripts", MetadataTableName = "CodeMetadata" },
-            new FileType { Id = 9, Name = "Fonts", MetadataTableName = "FontMetadata" }
+            new FileType { Id = 1, Name = "Autre" },
+            new FileType { Id = 2, Name = "Image"},
+            new FileType { Id = 3, Name = "Video" },
+            new FileType { Id = 4, Name = "Audio"},
+            new FileType { Id = 5, Name = "Document"},
+            new FileType { Id = 6, Name = "Archive"},
+            new FileType { Id = 7, Name = "Binary"},
+            new FileType { Id = 8, Name = "Scripts"},
+            new FileType { Id = 9, Name = "Fonts"}
         };
 
         public static void EnsureFileTypesExist(MyDbContext db)

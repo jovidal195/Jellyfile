@@ -31,3 +31,31 @@ export const getChildren = (n) => n?.Files || n?.files || [];
 export const defineNode = (tree, uuid) => {
     return findNodeByUuid(tree, uuid);
 }
+
+export const updateNodeMetadata = (setTree, uuid, changes) => {
+    const deepUpdate = (nodes) => {
+        return nodes.map(n => {
+            if (getUuid(n) === uuid) {
+                return {
+                    ...n,
+                    metadata: {
+                        ...(n.metadata || {}),
+                        ...changes
+                    }
+                };
+            }
+
+            const children = getChildren(n);
+            if (children && children.length > 0) {
+                return {
+                    ...n,
+                    Files: deepUpdate(children)
+                };
+            }
+
+            return n;
+        });
+    };
+
+    setTree(prevTree => deepUpdate(prevTree));
+};

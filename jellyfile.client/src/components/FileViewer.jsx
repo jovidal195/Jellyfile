@@ -11,8 +11,9 @@ import DataTable from "react-data-table-component";
 import ToggleSwitch from "./ToggleSwitch";
 import Select from 'react-select';
 import AsyncCreatableSelect from 'react-select/async-creatable';
+import { updateNodeMetadata } from "../utils/nodesManager";
 
-function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink }) {
+function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink, setTree }) {
     const toast = useToast();
     const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
@@ -31,6 +32,9 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
     const pinInputRef = useRef(null);
     const deviceInputRef = useRef(null);
 
+    //metadatas
+    const [metadata, setMetadata] = useState(null);
+    const [loadingMeta, setLoadingMeta] = useState(false);
 
     function generateRandomPin() {
         return Math.floor(10000 + Math.random() * 90000); // 5 chiffres
@@ -379,6 +383,37 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         document.body.removeChild(link);
     }
 
+    const updateMetadata = async (changes) => {
+        try {
+            const resp = await fetch(`/api/files/${encodeURIComponent(file.uuid)}/metadata`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(changes)
+            });
+
+            if (resp.ok) {
+                const updatedMeta = await resp.json();
+                //console.log(updatedMeta);
+                setFile(prev => {
+                    const next = {
+                        ...prev,
+                        metadata: { ...prev.metadata, ...updatedMeta }
+                    };
+                    updateNodeMetadata(setTree, file.uuid, updatedMeta);
+                    return next;
+                });
+
+            } else {
+                const err = await resp.json().catch(() => ({ message: "Erreur" }));
+                toast("error", err.message || "Erreur sauvegarde méta");
+            }
+        } catch (err) {
+            console.error("meta patch error", err);
+            toast("error", "Erreur réseau");
+        }
+    };
+
     const changePermission = async (file, setFile) => {
         const toPublic = file.permission !== 0;
         const permission = toPublic ? 0 : 2;
@@ -427,7 +462,6 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         }
     }, [file]);
 
-
     useEffect(() => {
         if (!file.uuid) return;
 
@@ -454,6 +488,41 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
 
         loadTags();
     }, [file]);
+
+    const LANGUAGE_OPTIONS = [
+        "None","Français", "English", "Español", "Deutsch", "Italiano", "Português",
+        "中文 (简体)", "中文 (繁體)", "日本語", "한국어", "Русский",
+        "العربية", "Türkçe", "Nederlands", "Svenska", "Norsk", "Dansk",
+        "Suomi", "Hindi", "Bengali", "Urdu", "Polski", "Čeština", "Ελληνικά", "עברית"
+    ].map(l => ({ value: l, label: l }));
+
+    const filterLanguages = (input) => {
+        const q = (input || "").toLowerCase();
+        if (!q) return LANGUAGE_OPTIONS;
+        return LANGUAGE_OPTIONS.filter(o =>
+            o.label.toLowerCase().includes(q)
+        );
+    };
+
+    // en haut du composant FileViewer
+    const [languageValue, setLanguageValue] = useState(
+        file?.metadata?.language ? { value: file.metadata.language, label: file.metadata.language } : null
+    );
+    const [subtitleValue, setSubtitleValue] = useState(
+        file?.metadata?.subtitleLanguage ? { value: file.metadata.subtitleLanguage, label: file.metadata.subtitleLanguage } : null
+    );
+
+    // garde en sync quand file change (quand l'utilisateur ouvre un autre fichier)
+    useEffect(() => {
+        if (!file) return;
+        //console.log(file.metadata);
+        setLanguageValue(
+            file.metadata?.language ? { value: file.metadata.language, label: file.metadata.language } : null
+        );
+        setSubtitleValue(
+            file.metadata?.subtitleLanguage ? { value: file.metadata.subtitleLanguage, label: file.metadata.subtitleLanguage } : null
+        );
+    }, [file?.uuid, file?.metadata?.language, file?.metadata?.subtitleLanguage]);
 
 
     return (
@@ -552,10 +621,102 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
 
 
                         <form>
-                            <div className="line-container"><label>Auteur </label><input type="text"></input></div>
-                            <div className="line-container"><span><label>Date de création </label><input type="date"></input></span></div>
-                            <div className="line-container"><label>Copyright </label><input type="text"></input></div>
-                            <div><label>Généré par IA </label><ToggleSwitch checked={false} onChange={async val => { console.log(val); }} /></div>
+                            <div className="line-container">
+                                <label>Auteur</label>
+                                <input
+                                    type="text"
+                                    value={file.metadata?.author || ""}
+                                    onChange={async e => updateMetadata({ author: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Date de création</label>
+                                <input
+                                    type="date"
+                                    value={file.metadata?.creationDate?.split("T")[0] || ""}
+                                    onChange={async e => updateMetadata({ creationDate: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Copyright</label>
+                                <input
+                                    type="text"
+                                    value={file.metadata?.copyrightHolder || ""}
+                                    onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Licence</label>
+                                <input
+                                    type="text"
+                                    value={file.metadata?.license || ""}
+                                    onChange={async e => updateMetadata({ license: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                                <label>Généré par IA</label>
+                                <ToggleSwitch
+                                    checked={file.metadata?.isAiGenerated}
+                                    onChange={async val => updateMetadata({ isAiGenerated: val })}
+                                />
+                            </div>
+
+                            <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                                <label>Vectoriel</label>
+                                <ToggleSwitch
+                                    checked={file.metadata?.isVector}
+                                    onChange={async val => updateMetadata({ isVector: val })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Format</label>
+                                <input
+                                    type="text"
+                                    value={file.metadata?.format || ""}
+                                    onChange={async e => updateMetadata({ format: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Color Mode</label>
+                                <input
+                                    type="text"
+                                    value={file.metadata?.colorMode || ""}
+                                    onChange={async e => updateMetadata({ colorMode: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>DPI</label>
+                                <input
+                                    type="number"
+                                    value={file.metadata?.dpi || ""}
+                                    onChange={async e => updateMetadata({ dpi: parseInt(e.target.value) })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Bit Depth</label>
+                                <input
+                                    type="number"
+                                    value={file.metadata?.bitDepth || ""}
+                                    onChange={async e => updateMetadata({ bitDepth: parseInt(e.target.value) })}
+                                />
+                            </div>
+
+                            <div className="line-container">
+                                <label>Collections</label>
+                                <input
+                                    type="text"
+                                    value={file.metadata?.collections || ""}
+                                    onChange={async e => updateMetadata({ collections: e.target.value })}
+                                />
+                            </div>
                         </form>
                     </>
                 ) : file.fileTypeName === "Video" ? (
@@ -611,12 +772,116 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                                     await syncFileTags(unique);
                                 }}
                             />
-                        <form>
-                            <div className="line-container"><label>Auteur </label><input type="text"></input></div>
-                            <div className="line-container"><span><label>Date de création </label><input type="date"></input></span></div>
-                            <div className="line-container"><label>Copyright </label><input type="text"></input></div>
-                            <div><label>Généré par IA </label><ToggleSwitch checked={false} onChange={async val => { console.log(val); }} /></div>
-                        </form>
+                            <form>
+
+                                <div className="line-container">
+                                    <label>Auteur</label>
+                                    <input
+                                        type="text"
+                                        value={file.metadata?.author || ""}
+                                        onChange={async e => updateMetadata({ author: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="line-container">
+                                    <label>Date de création</label>
+                                    <input
+                                        type="date"
+                                        value={file.metadata?.creationDate?.split("T")[0] || ""}
+                                        onChange={async e => updateMetadata({ creationDate: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="line-container">
+                                    <label>Copyright</label>
+                                    <input
+                                        type="text"
+                                        value={file.metadata?.copyrightHolder || ""}
+                                        onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="line-container">
+                                    <label>Licence</label>
+                                    <input
+                                        type="text"
+                                        value={file.metadata?.license || ""}
+                                        onChange={async e => updateMetadata({ license: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="line-container">
+                                    <label>Langue</label>
+                                    <AsyncCreatableSelect
+                                        isClearable
+                                        cacheOptions
+                                        defaultOptions={LANGUAGE_OPTIONS}
+                                        loadOptions={async (inputValue) => filterLanguages(inputValue)}
+                                        value={languageValue}
+                                        onChange={(opt) => {
+                                            if (opt === null) {
+                                                setLanguageValue(null);
+                                                updateMetadata({ language: null });
+                                                return;
+                                            }
+                                            setLanguageValue(opt);
+                                            updateMetadata({ language: opt.value });
+                                        }}
+                                        onCreateOption={(inputValue) => {
+                                            const custom = { value: inputValue, label: inputValue };
+                                            setLanguageValue(custom);
+                                            updateMetadata({ language: inputValue });
+                                        }}
+                                        placeholder="Sélectionnez ou entrez une langue..."
+                                        styles={{ menu: (base) => ({ ...base, zIndex: 9999 }) }}
+                                    />
+                                </div>
+
+                                <div className="line-container">
+                                    <label>Langue des sous-titres</label>
+                                    <AsyncCreatableSelect
+                                        isClearable
+                                        cacheOptions
+                                        defaultOptions={LANGUAGE_OPTIONS}
+                                        loadOptions={async (inputValue) => filterLanguages(inputValue)}
+                                        value={subtitleValue}
+                                        onChange={(opt) => {
+                                            if (opt === null) {
+                                                setSubtitleValue(null);
+                                                updateMetadata({ subtitleLanguage: null });
+                                                return;
+                                            }
+                                            setSubtitleValue(opt);
+                                            updateMetadata({ subtitleLanguage: opt.value });
+                                        }}
+                                        onCreateOption={(inputValue) => {
+                                            const custom = { value: inputValue, label: inputValue };
+                                            setSubtitleValue(custom);
+                                            updateMetadata({ subtitleLanguage: inputValue });
+                                        }}
+                                        placeholder="Sélectionnez ou entrez la langue des sous-titres..."
+                                        styles={{ menu: (base) => ({ ...base, zIndex: 9999 }) }}
+                                    />
+                                </div>
+
+                                <div className="line-container">
+                                    <label>Version</label>
+                                    <input
+                                        type="text"
+                                        value={file.metadata?.version || ""}
+                                        onChange={async e => updateMetadata({ version: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
+                                    <label>Généré par IA</label>
+                                    <ToggleSwitch
+                                        checked={file.metadata?.isAiGenerated}
+                                        onChange={async val => updateMetadata({ isAiGenerated: val })}
+                                    />
+                                </div>
+
+                            </form>
                     </>
                 ) : file.fileTypeName === "Audio" ? (
                     <>

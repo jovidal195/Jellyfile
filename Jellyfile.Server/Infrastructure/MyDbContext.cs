@@ -26,6 +26,9 @@ namespace Jellyfile.Server.Infrastructure
         public DbSet<Tag> Tags { get; set; }
         public DbSet<FileTag> FileTags { get; set; }
 
+        public DbSet<FileMetadata> FileMetadatas { get; set; }
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Users
@@ -65,10 +68,6 @@ namespace Jellyfile.Server.Infrastructure
             modelBuilder.Entity<FileType>()
                 .HasIndex(ft => ft.Name)
                 .IsUnique();
-
-            modelBuilder.Entity<FileType>()
-                .Property(ft => ft.MetadataTableName)
-                .IsRequired(false);
 
             // File
             modelBuilder.Entity<File>()
@@ -138,6 +137,11 @@ namespace Jellyfile.Server.Infrastructure
             modelBuilder.Entity<Tag>()
                 .HasIndex(t => t.Name);
 
+            modelBuilder.Entity<FileMetadata>()
+                .HasOne(m => m.File)
+                .WithOne(f => f.Metadata)
+                .HasForeignKey<FileMetadata>(m => m.FileId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 

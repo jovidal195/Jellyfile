@@ -1,3 +1,6 @@
+# version 0.1.0
+- initial deployable version
+
 # version 0.0.2
 - package pour tests de déploiement server
 
