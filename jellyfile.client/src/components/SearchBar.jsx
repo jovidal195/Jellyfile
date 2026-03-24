@@ -37,6 +37,11 @@ export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree
             );
             let tags = respTags.ok ? await respTags.json() : [];
 
+            if (respTags.status === 401) {
+                window.location.href = "/";
+                return;
+            }
+
             tags = tags.map(t => ({
                 id: t.id,
                 name: t.name,
@@ -48,6 +53,11 @@ export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree
                 { credentials: "include" }
             );
             let keywords = respWord.ok ? await respWord.json() : [];
+
+            if (respWord.status === 401) {
+                window.location.href = "/";
+                return;
+            }
 
             keywords = keywords.map(t => ({
                 uuid: t.uuid,
