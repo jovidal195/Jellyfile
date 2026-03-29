@@ -22,13 +22,13 @@ Récupérer le fichier `.zip` depuis la section **Releases** du dépôt.
 ### 2. Extraire l’archive
 
 ```bash id="unzip01"
-unzip Jellyfile_vX.X.X.zip
+unzip Jellyfile_vX.X.X.zip```
 
 ### 3. Lancer Jellyfile
 
 ```bash
 cd Jellyfile.Server
-dotnet Jellyfile.Server.dll
+dotnet Jellyfile.Server.dll```
 
 ## Développeur
 
