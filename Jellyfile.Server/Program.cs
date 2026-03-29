@@ -212,6 +212,11 @@ internal class Program
                 "src",
                 "theme.css"
             );
+            var directory = Path.GetDirectoryName(cssPath);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory!);
+            }
             File.WriteAllText(cssPath, css);
         }
 
