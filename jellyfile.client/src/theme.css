@@ -1,0 +1,31 @@
+
+            :root {
+                --app-name: Jellyfile;
+            }
+
+            :root[data-theme="light"] {
+                --login-bg: #f4f4f4;
+                --login-text: #213547;
+                --login-input-bg: #ffffff;
+                --login-input-text: #213547;
+                --login-button-bg: #e53935;
+                --login-button-text: #ffffff;
+                --login-button-hover: #ad2b28;
+                --interface-bg: #ffffff;
+                --interface-leftbox-bg: #f4f4f4;
+                --interface-text: #808080;
+            }
+
+            :root[data-theme="dark"] {
+                --login-bg: #242424;
+                --login-text: rgba(255,255,255,0.87);
+                --login-input-bg: #333;
+                --login-input-text: #ffffff;
+                --login-button-bg: #6498ff;
+                --login-button-text: #ffffff;
+                --login-button-hover: #90b4fc;
+                --interface-bg: #242424;
+                --interface-leftbox-bg: #333;
+                --interface-text: #ffffff;
+            }
+            

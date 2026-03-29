@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import UserMenu from "./UserMenu";
+import MenuParam from "./menuParam";
 import UserModal from "./UserModal";
 import MenuProfil from './menuProfil';
 import MenuUsers from './menuUsers';
@@ -24,6 +25,7 @@ export default function Interface({ toggleTheme, theme }) {
     const [avatarLink, setavatarLink] = useState("");
     const [file, setFile] = useState({});
     const [stack, setStack] = useState([]);
+    const [appName, setAppName] = useState("");
 
 
     useEffect(() => {
@@ -103,10 +105,33 @@ export default function Interface({ toggleTheme, theme }) {
 
     const closeMenu = () => setMenuOpen(false);
 
+    useEffect(() => {
+        const root = document.documentElement;
+
+        const syncAppName = () => {
+            const value = getComputedStyle(root)
+                .getPropertyValue("--app-name")
+                .trim()
+                .replace(/^["']|["']$/g, "");
+
+            setAppName(value || "Jellyfile");
+        };
+
+        syncAppName();
+
+        const observer = new MutationObserver(syncAppName);
+        observer.observe(root, {
+            attributes: true,
+            attributeFilter: ["style"]
+        });
+
+        return () => observer.disconnect();
+    }, []);
+
     return (
         <div className="mainapp-container">
             <header className="top-bar">
-                <span onClick={return2main} style={{ "cursor": "pointer", "padding" : "17px"}}>Jellyfile</span>  {/* gauche */}
+                <span onClick={return2main} style={{ "cursor": "pointer", "padding": "17px" }}>{appName || "Jellyfile"}</span>
 
                 <SearchBar tree={tree} setFile={setFile} setTree={setTree} setStack={setStack} reloadTree={reloadTree} />
                 
@@ -137,7 +162,10 @@ export default function Interface({ toggleTheme, theme }) {
                     <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} stack={stack} />
                     <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree} />
                     {user?.role === "Admin" && (
-                        <MenuUsers users={users} setUsers={setUsers} />
+                        <>
+                            <MenuUsers users={users} setUsers={setUsers} />
+                            <MenuParam></MenuParam>
+                        </>
                     )}
                 </div>
             </div>

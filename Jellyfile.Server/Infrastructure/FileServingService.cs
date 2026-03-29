@@ -13,7 +13,8 @@ namespace Jellyfile.Server.Infrastructure
             ".js",
             ".json",
             ".xml",
-            ".txt"
+            ".txt",
+            ".exe"
         };
 
         public FileResult ServeFile(ControllerBase controller, string fullPath, string fileName)

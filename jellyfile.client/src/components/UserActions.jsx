@@ -72,13 +72,24 @@ export default function UserActions({ user, onClose, return2main, setUsers, togg
         }
     };
 
+    const loadParam = async () => {
+        onClose();
+        pagesHideAndDisplay(".param");
+        const leftBox = document.querySelector(".left-box");
+        leftBox.style.display = "none";
+
+    };
+
     return (
         <span className="user-actions">
             <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: "20px", justifyContent: "center" }}><FontAwesomeIcon icon={faSun} /><ToggleSwitch onChange={toggleTheme} checked={theme === "dark"} /><FontAwesomeIcon icon={faMoon} /></div>
             <button onClick={return2main}>Home</button>
             <button onClick={loadProfile}>Profil</button>
             {user?.role === "Admin" && (
+                <>
                 <button onClick={loadUsers}>Users</button>
+                <button onClick={loadParam}>Paramètres</button>
+                </>
             )}
             <button onClick={handleLogout}>Déconnexion</button>
         </span>

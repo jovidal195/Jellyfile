@@ -3,6 +3,7 @@ using Jellyfile.Server.Models;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using File = System.IO.File;
 
 internal class Program
 {
@@ -156,6 +157,12 @@ internal class Program
                 db.SaveChanges();
             }
 
+            if (!db.AppSettings.Any())
+            {
+                db.AppSettings.Add(new AppSettings()); // toutes les valeurs par défaut du modèle sont utilisées
+                db.SaveChanges();
+            }
+
             FileTypeInitializer.EnsureFileTypesExist(db);
             FileExtensionInitializer.EnsureFileExtensionsExist(db);
 
@@ -163,6 +170,49 @@ internal class Program
             var users = db.Users.ToList();
             var userFolderService = new UserFolderService(userRootPath);
             userFolderService.SyncUserFolders(users);
+
+            var settings = db.AppSettings.First();
+            var css = $@"
+            :root {{
+                --app-name: {settings.ApplicationName};
+            }}
+
+            :root[data-theme=""light""] {{
+                --login-bg: {settings.Light_LoginBg};
+                --login-text: {settings.Light_LoginText};
+                --login-input-bg: {settings.Light_LoginInputBg};
+                --login-input-text: {settings.Light_LoginInputText};
+                --login-button-bg: {settings.Light_LoginButtonBg};
+                --login-button-text: {settings.Light_LoginButtonText};
+                --login-button-hover: {settings.Light_LoginButtonHover};
+                --interface-bg: {settings.Light_InterfaceBg};
+                --interface-leftbox-bg: {settings.Light_InterfaceLeftboxBg};
+                --interface-text: {settings.Light_InterfaceText};
+            }}
+
+            :root[data-theme=""dark""] {{
+                --login-bg: {settings.Dark_LoginBg};
+                --login-text: {settings.Dark_LoginText};
+                --login-input-bg: {settings.Dark_LoginInputBg};
+                --login-input-text: {settings.Dark_LoginInputText};
+                --login-button-bg: {settings.Dark_LoginButtonBg};
+                --login-button-text: {settings.Dark_LoginButtonText};
+                --login-button-hover: {settings.Dark_LoginButtonHover};
+                --interface-bg: {settings.Dark_InterfaceBg};
+                --interface-leftbox-bg: {settings.Dark_InterfaceLeftboxBg};
+                --interface-text: {settings.Dark_InterfaceText};
+            }}
+            ";
+
+            // sauvegarde dans le dossier public React pour qu'il soit chargé par le navigateur
+            var cssPath = Path.Combine(
+                builder.Environment.ContentRootPath,
+                "..",
+                "Jellyfile.Client",
+                "src",
+                "theme.css"
+            );
+            File.WriteAllText(cssPath, css);
         }
 
 

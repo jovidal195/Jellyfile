@@ -28,7 +28,7 @@ namespace Jellyfile.Server.Infrastructure
 
         public DbSet<FileMetadata> FileMetadatas { get; set; }
 
-
+        public DbSet<AppSettings> AppSettings { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Users
@@ -142,6 +142,9 @@ namespace Jellyfile.Server.Infrastructure
                 .WithOne(f => f.Metadata)
                 .HasForeignKey<FileMetadata>(m => m.FileId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AppSettings>()
+                .HasKey(s => s.Id);
         }
     }
 

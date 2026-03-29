@@ -7,6 +7,7 @@ import PinGatePage from './components/PinGatePage';
 import ExternalPreviewPage from './components/ExternalPreviewPage.jsx';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
+import './theme.css';
 
 function App() {
     const [user, setUser] = useState(null);
@@ -36,13 +37,9 @@ function App() {
     const toggleTheme = () => {
         const newTheme = theme === "dark" ? "light" : "dark";
         setTheme(newTheme);
-
-        // On sauvegarde le choix utilisateur
         localStorage.setItem("theme", newTheme);
-
         document.documentElement.setAttribute("data-theme", newTheme);
     };
-
 
     if (loading) return <div>Chargement...</div>;
 
