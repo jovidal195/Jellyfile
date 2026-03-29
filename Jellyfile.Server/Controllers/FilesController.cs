@@ -276,6 +276,8 @@ namespace Jellyfile.Server.Controllers
 
         private async Task<object> BuildUserTree(User user)
         {
+            var now = DateTime.UtcNow;
+
             var folders = await _db.Folders
                 .Where(f => f.OwnerId == user.Id)
                 .AsNoTracking()
@@ -290,7 +292,8 @@ namespace Jellyfile.Server.Controllers
                 .ToListAsync();
 
             var fileOwners = await _db.FileOwners
-                .Where(fo => fo.UserId == user.Id)
+                .Where(fo => fo.UserId == user.Id &&
+                 (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > now))
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -368,7 +371,7 @@ namespace Jellyfile.Server.Controllers
 
             // Root "Shared"
             var sharedFiles = await _db.FileOwners
-                .Where(fo => fo.UserId == user.Id && fo.File.CreatedById != user.Id)
+                .Where(fo => fo.UserId == user.Id && fo.File.CreatedById != user.Id && (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > now))
                 .Include(fo => fo.File)
                     .ThenInclude(f => f.FileType)
                 .Include(fo => fo.File)
@@ -827,6 +830,23 @@ namespace Jellyfile.Server.Controllers
                 return Forbid();
             }
 
+            if (!isCreator)
+            {
+                // Retirer uniquement l’accès (ownership)
+                var ownerEntry = dbFile.Owners
+                    .FirstOrDefault(o => o.UserId == userId.Value);
+
+                if (ownerEntry != null)
+                {
+                    _db.FileOwners.Remove(ownerEntry);
+                    await _db.SaveChangesAsync();
+                }
+
+                await _userStorage.RecalculateStorageUsedBytes(userId.Value);
+
+                return Ok(new { message = "Accès au fichier retiré" });
+            }
+
             // --- Supprimer le fichier physique ---
             var projectRoot = UserFolderService.FindProjectRoot();
             var fullPath = Path.Combine(projectRoot, "users", dbFile.Path);
@@ -962,17 +982,30 @@ namespace Jellyfile.Server.Controllers
             if (userId == null)
                 return Unauthorized(new { message = "Pas de session" });
 
-            var file = await _db.Files.Include(f => f.Pins)
-                                      .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+            var file = await _db.Files
+                .Include(f => f.Pins)
+                .FirstOrDefaultAsync(f => f.Uuid == uuid && f.Name == fileName);
+
             if (file == null) return NotFound();
 
             if (file.CreatedById != userId.Value)
                 return StatusCode(403, new { message = "Pas les droits sur ce fichier" });
 
-            var filePin = file.Pins.FirstOrDefault(p => int.TryParse(p.Pin, out var val) && val == pin);
+            var filePin = file.Pins.FirstOrDefault(p =>
+                int.TryParse(p.Pin, out var val) && val == pin);
+
             if (filePin == null) return NotFound();
 
+            var ownersToRemove = await _db.FileOwners
+                .Where(fo => fo.FileId == file.Id &&
+                             fo.PermissionExpiresAt == filePin.ExpiresAt)
+                .ToListAsync();
+
+            _db.FileOwners.RemoveRange(ownersToRemove);
+
+            // Supprimer le pin
             _db.FilePins.Remove(filePin);
+
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1058,22 +1091,26 @@ namespace Jellyfile.Server.Controllers
 
             if (userId != null)
             {
-                var access = dbFile.Owners.Any(fo =>
+                var existingOwner = dbFile.Owners.FirstOrDefault(fo =>
                     fo.UserId == userId.Value &&
-                    fo.Permission == PermissionLevel.AuthUser &&
-                    (fo.PermissionExpiresAt == null || fo.PermissionExpiresAt > DateTime.UtcNow));
+                    fo.Permission == PermissionLevel.AuthUser);
 
-                if (!access)
+                if (existingOwner == null)
                 {
                     _db.FileOwners.Add(new FileOwner
                     {
                         UserId = userId.Value,
                         Permission = PermissionLevel.AuthUser,
-                        FileId = dbFile.Id
+                        FileId = dbFile.Id,
+                        PermissionExpiresAt = filePin.ExpiresAt
                     });
-
-                    await _db.SaveChangesAsync();
                 }
+                else
+                {
+                    existingOwner.PermissionExpiresAt = filePin.ExpiresAt;
+                }
+
+                await _db.SaveChangesAsync();
 
                 return Ok(new { authenticated = true, file = fileObj });
             }

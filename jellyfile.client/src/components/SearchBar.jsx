@@ -148,7 +148,7 @@ export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree
                             </div>
                             ))}
                         </div>
-                        <div style={{ padding: "4px 8px", borderBottom: "1px solid #eee", flex: 1, minWidth: 0 }}>test</div>
+                        {/*<div style={{ padding: "4px 8px", borderBottom: "1px solid #eee", flex: 1, minWidth: 0 }}>test</div>*/}
                     </div>
                 </div>
             )}

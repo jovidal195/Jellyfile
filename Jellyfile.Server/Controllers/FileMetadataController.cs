@@ -19,6 +19,10 @@ namespace Jellyfile.Server.Controllers
         [HttpPatch("api/files/{fileUuid}/metadata")]
         public async Task<IActionResult> PatchMetadata(string fileUuid, [FromBody] JsonElement raw)
         {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+                return Unauthorized(new { message = "Pas de session" });
+
             if (string.IsNullOrWhiteSpace(fileUuid)) return BadRequest();
 
             var file = await _db.Files.SingleOrDefaultAsync(f => f.Uuid == fileUuid);

@@ -552,7 +552,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                             style={{ cursor: "pointer" }}
                         />
                     )}
-                    <FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
+                    {/* <FontAwesomeIcon icon={faUserGroup} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} / > */}
                     <FontAwesomeIcon icon={faTrashCan} onClick={() => openModal("deleteFile", null)} style={{ cursor: "pointer" }} />
                 </div>
                 {file.owner !== undefined && (

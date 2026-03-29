@@ -12,8 +12,8 @@ function PinGatePage() {
 
     async function submit() {
         const fp = await getDeviceFingerprint();
-        console.log(fp);
-        console.log(JSON.stringify({ pin, accessToken: accesstoken, fingerprint: fp }));
+        /*console.log(fp);
+        console.log(JSON.stringify({ pin, accessToken: accesstoken, fingerprint: fp }));*/
 
         const res = await fetch(`/api/files/pin/validate/${uuid}/${fileName}`, {
             method: "POST",
@@ -33,8 +33,6 @@ function PinGatePage() {
         }
 
         const data = await res.json();
-
-        console.log(data);
 
         if (data.authenticated) {
             navigate("/", { state: { fileToDisplay: data.file } });
