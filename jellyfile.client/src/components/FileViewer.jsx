@@ -539,12 +539,12 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             <div className="file-controller">
                 <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem' }}><FontAwesomeIcon icon={icon} />{file.name}</h2>
                 <div style={{ display: "flex", gap: "10px", padding: "10px" }}>
-                    <FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${file.name}?t=${Date.now()}`)} style={{ cursor: "pointer" }} />
+                    <FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${encodeURIComponent(file.name)}?t=${Date.now()}`)} style={{ cursor: "pointer" }} />
                     {file.permission === 0 && (
                         <FontAwesomeIcon
                             icon={faShareAlt} // ou un autre icône de partage
                             onClick={() => {
-                                const url = `${window.location.origin}/api/files/${file.uuid}/${file.name}?t=${Date.now()}`;
+                                const url = `${window.location.origin}/api/files/${file.uuid}/${encodeURIComponent(file.name)}`;
                                 navigator.clipboard.writeText(url)
                                     .then(() => toast("success", "Lien copié dans le presse-papier"))
                                     .catch(() => toast("error", "Impossible de copier le lien"));
