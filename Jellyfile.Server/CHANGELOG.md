@@ -1,3 +1,6 @@
+# 0.1.3
+- added a bootstrap installation for admin account
+
 # 0.1.2
 - Fix on share link
 

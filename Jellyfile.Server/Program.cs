@@ -129,7 +129,7 @@ internal class Program
 
             DbInitializer.EnsureDatabaseReady(db);
 
-            if (!db.Users.Any(u => u.Username == "admin"))
+            /*if (!db.Users.Any(u => u.Username == "admin"))
             {
                 var admin = new User
                 {
@@ -155,7 +155,7 @@ internal class Program
                 };
                 db.Folders.Add(adminRootFolder);
                 db.SaveChanges();
-            }
+            }*/
 
             if (!db.AppSettings.Any())
             {
@@ -280,13 +280,14 @@ internal class Program
         });
 
 
-        app.MapControllers();
+        //app.MapControllers();
 
         Action<IEndpointRouteBuilder> configure = endpoints =>
         {
             endpoints.MapControllers();
-            const string FilePath = "index.html";
-            endpoints.MapFallbackToFile(FilePath);
+            //const string FilePath = "index.html";
+            //endpoints.MapFallbackToFile(FilePath);
+            endpoints.MapFallbackToFile("index.html");
         };
         app.UseEndpoints(configure);
 

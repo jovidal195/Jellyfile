@@ -361,3 +361,32 @@
     cursor: pointer;
     font-size: 35px;
 }
+
+/* --- bootstrap admin --- */
+.password-field {
+    position: relative;
+    width: 100%;
+}
+
+    .password-field input {
+        width: 100%;
+        padding-right: 70px;
+    }
+
+.password-actions {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toggle-key,
+.toggle-eyes {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: var(--login-text);
+}
