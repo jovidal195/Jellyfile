@@ -1,3 +1,6 @@
+# 0.1.4
+- try fixing the admin bootstrap
+
 # 0.1.3
 - added a bootstrap installation for admin account
 

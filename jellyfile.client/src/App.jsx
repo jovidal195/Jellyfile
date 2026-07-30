@@ -90,7 +90,11 @@ function App() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [adminExists]);
+
+    useEffect(() => {
+        console.log("adminExists changed:", adminExists);
+    }, [adminExists]);
 
     const toggleTheme = () => {
         const newTheme = theme === "dark" ? "light" : "dark";
