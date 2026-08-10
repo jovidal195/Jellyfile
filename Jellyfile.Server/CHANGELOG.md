@@ -1,3 +1,6 @@
+# 0.1.5
+- fixing the PIN issue
+
 # 0.1.4
 - try fixing the admin bootstrap
 

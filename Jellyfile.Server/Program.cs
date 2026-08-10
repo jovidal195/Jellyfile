@@ -287,7 +287,7 @@ internal class Program
             endpoints.MapControllers();
             //const string FilePath = "index.html";
             //endpoints.MapFallbackToFile(FilePath);
-            endpoints.MapFallbackToFile("index.html");
+            endpoints.MapFallbackToFile("{*path}", "index.html");
         };
         app.UseEndpoints(configure);
 
