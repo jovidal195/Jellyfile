@@ -41,3 +41,9 @@ C'est moi, jovidal195, le développeur de l'application.
   attention le e-begging arrive ಥ_ಥ
 </details> 
 <a href="https://ko-fi.com/jello195"><img src="https://www.ko-fi.com/img/githubbutton_sm.svg" alt="Support me on ko-fi"></img></a>
+
+## License
+
+Jellyfile is licensed under the MIT License.
+
+See the [LICENSE](LICENSE.md) file for details.
