@@ -3,6 +3,7 @@ import { useState } from "react";
 import ToggleSwitch from "./ToggleSwitch";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
+import packageJson from "../../package.json";
 
 export default function UserActions({ user, onClose, return2main, setUsers, toggleTheme, theme}) {
     const toast = useToast();
@@ -92,6 +93,15 @@ export default function UserActions({ user, onClose, return2main, setUsers, togg
                 </>
             )}
             <button onClick={handleLogout}>Déconnexion</button>
+            {user?.role === "Admin" && (
+            <span style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                <span>
+                    <em style={{ color: "var(--interface-text)", fontSize: "small", fontWeight: "normal" }}>
+                        version {packageJson.version}
+                    </em>
+                </span>
+                </span>
+            )}
         </span>
     );
 }
