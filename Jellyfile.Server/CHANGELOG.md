@@ -1,3 +1,6 @@
+# 0.1.6
+- enhanced mobile interface
+
 # 0.1.5
 - fixing the PIN issue
 

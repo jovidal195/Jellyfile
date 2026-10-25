@@ -4,7 +4,7 @@ import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { defineNode } from '../utils/nodesManager';
 import { displayFilePage } from "../utils/displayFilePage.js";
 
-export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree }) {
+export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree, isMobile }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState({ keywords: [], tags: [] });
     const [open, setOpen] = useState(false);
@@ -99,6 +99,9 @@ export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree
             // Si tu veux directement naviguer dans ce tag
             setStack([]); 
             // ou gérer comme tu veux
+
+            const leftBox = document.querySelector(".left-box");
+            leftBox.style.display = "initial";
         } catch (err) {
             console.error("Erreur réseau fetch tag tree:", err);
         }
@@ -133,7 +136,7 @@ export default function SearchBar({ tree, setFile, setTree, setStack, reloadTree
             </button>
             {open && (results.tags.length > 0 || results.keywords.length > 0) && (
                 <div className="search-dropdown">
-                    <div style={{display:"flex"}}>
+                    <div style={!isMobile ? { display: "flex" } : {}}>
                         <div style={{ padding: "4px 8px", borderBottom: "1px solid #eee", flex: 4, minWidth: "150px" }}>
                             {results.keywords.map((k, i) => (
                                 <div key={i} style={{ padding: "4px 8px", borderBottom: "1px solid #eee", flex: 1, display: "flex" }}>

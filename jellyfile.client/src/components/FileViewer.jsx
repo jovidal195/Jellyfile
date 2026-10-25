@@ -22,7 +22,7 @@ import ArchiveViewer from "./fileviewer/FV_archives";
 import BinaryViewer from './fileviewer/FV_binaries';
 import ScriptViewer from './fileviewer/FV_scripts';
 
-function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink, setTree }) {
+function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLink, setTree, isMobile }) {
     const toast = useToast();
     const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
@@ -534,7 +534,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
 
 
     return (
-        <div className="file-viewer submenus">
+        <div className={`file-viewer submenus${isMobile ? " mobile" : ""}`}>
             <FontAwesomeIcon icon={faCircleLeft} id="arrow" onClick={return2main} />
             <div className="file-controller">
                 <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem' }}><FontAwesomeIcon icon={icon} />{file.name}</h2>

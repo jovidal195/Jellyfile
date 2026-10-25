@@ -12,7 +12,8 @@ import {
     faFileCode,
     faFileAlt,
     faFolderPlus,
-    faTrash
+    faTrash,
+    faBars
 } from '@fortawesome/free-solid-svg-icons';
 import './userTree.css';
 import { displayFilePage } from "../utils/displayFilePage.js";
@@ -641,6 +642,16 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
     };
 
 
+    const switchDisplayMenu = () => {
+        const menu = document.querySelector(".left-box");
+
+        if (menu.style.display !== "none") {
+            menu.style.display = "none";
+        } else {
+            menu.style.display = "inherit";
+        }
+    };
+
     useEffect(() => {
         // replace localTree with new prop and remap stack entries to the new objects (by UUID)
         setLocalTree(tree);
@@ -666,38 +677,43 @@ function userTree({ user, tree, setFile, reloadTree, isMobile, return2main, stac
     }, []);
 
     return (
-        <div className="left-box">
-            <div
-                onDragOverCapture={handleTreeDragOverCapture}
-                onDropCapture={handleTreeDropCapture}
-                onDragLeaveCapture={() => setDragOverFolderUuid(null)}
-            >
-                {currentItems.map((item, idx) => renderViewItem(item, idx, 0))}
-            </div>
-            <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
-                <h3>Supprimer le dossier</h3>
-
-                <p>
-                    Vous vous apprêtez à supprimer le dossier <strong style={{ border: "var(--interface-text) solid 0.5px", padding: "5px", borderRadius: "5px" }}><FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {folderToDelete?.name}</strong> de façon définitive. Voulez-vous faire remonter l'arborescence son contenu afin de le garder ?<br/><strong><em>attention cette action est irréversible</em></strong>
-                </p>
-
-                <div className="modal-actions" style={{ display: "inline-flex", gap: "10px", flexDirection: isMobile ? "column" : "row" }}>
-                    <button onClick={closeDeleteModal}>
-                        Annuler
-                    </button>
-
-                    <button onClick={deleteWithPromote}>
-                        Oui
-                    </button>
-
-                    <button className="danger" onClick={deleteWithCascade}>
-                        Non, tout supprimer
-                    </button>
-
+        <>
+            {isMobile && (<FontAwesomeIcon icon={faBars} style={{ cursor: "pointer", position: "absolute", padding: "10px", fontSize: "2em", color: "var(--interface-text)" }} onClick={switchDisplayMenu} />
+            )}
+            <div className={`left-box ${isMobile ? "mobile" : ""}`}>
+                <div
+                    className="menu-elements"
+                    onDragOverCapture={handleTreeDragOverCapture}
+                    onDropCapture={handleTreeDropCapture}
+                    onDragLeaveCapture={() => setDragOverFolderUuid(null)}
+                >
+                    {currentItems.map((item, idx) => renderViewItem(item, idx, 0))}
                 </div>
-            </Modal>
+                <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
+                    <h3>Supprimer le dossier</h3>
 
-        </div>
+                    <p>
+                        Vous vous apprêtez à supprimer le dossier <strong style={{ border: "var(--interface-text) solid 0.5px", padding: "5px", borderRadius: "5px" }}><FontAwesomeIcon icon={faFolder} style={{ color: "var(--login-button-hover)" }} /> {folderToDelete?.name}</strong> de façon définitive. Voulez-vous faire remonter l'arborescence son contenu afin de le garder ?<br/><strong><em>attention cette action est irréversible</em></strong>
+                    </p>
+
+                    <div className="modal-actions" style={{ display: "inline-flex", gap: "10px", flexDirection: isMobile ? "column" : "row" }}>
+                        <button onClick={closeDeleteModal}>
+                            Annuler
+                        </button>
+
+                        <button onClick={deleteWithPromote}>
+                            Oui
+                        </button>
+
+                        <button className="danger" onClick={deleteWithCascade}>
+                            Non, tout supprimer
+                        </button>
+
+                    </div>
+                </Modal>
+
+            </div>
+        </>
     );
 }
 

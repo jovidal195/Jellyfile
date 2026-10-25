@@ -8,6 +8,14 @@
     const fileViewer = document.querySelector(".file-viewer");
     fileViewer.style.display = "initial";
 
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile) {
+        const leftBox = document.querySelector(".left-box");
+        leftBox.style.display = "none";
+    }
+    
+    
     setFile(f);
     //console.log(f);
 };

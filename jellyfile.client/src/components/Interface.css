@@ -24,11 +24,22 @@
 }
 
 .left-box {
-    width: 30vw;
-    max-width: 250px;
     background-color: var(--interface-leftbox-bg);
     color: var(--interface-text);
     padding: 20px;
+}
+
+.left-box.mobile{
+    width: 100%;
+}
+
+.left-box.mobile .menu-elements {
+    padding: 0px 30px;
+}
+
+.left-box.not["mobile"]{
+    width: 30vw;
+    max-width: 250px;
 }
 
 .left-box .folder {
@@ -362,16 +373,20 @@
     font-size: 35px;
 }
 
+.file-viewer.mobile #arrow  {
+    padding: calc( 1em + 17px ) 10px !important;
+}
+
 /* --- bootstrap admin --- */
 .password-field {
     position: relative;
     width: 100%;
 }
 
-    .password-field input {
-        width: 100%;
-        padding-right: 70px;
-    }
+.password-field input {
+    width: 100%;
+    padding-right: 70px;
+}
 
 .password-actions {
     position: absolute;

@@ -83,7 +83,11 @@ export default function Interface({ toggleTheme, theme }) {
         rightBox.querySelectorAll(":scope > div").forEach(div => {
             div.style.display = "none";
         });
-        leftBox.style.display = "initial";
+        if (isMobile) {
+            leftBox.style.display = "none";
+        } else {
+            leftBox.style.display = "initial";
+        }
         const fileZone = document.querySelector(".home");
         fileZone.style.display = "grid";
         setStack([]);
@@ -133,7 +137,7 @@ export default function Interface({ toggleTheme, theme }) {
             <header className="top-bar">
                 <span onClick={return2main} style={{ "cursor": "pointer", "padding": "17px" }}>{appName || "Jellyfile"}</span>
 
-                <SearchBar tree={tree} setFile={setFile} setTree={setTree} setStack={setStack} reloadTree={reloadTree} />
+                <SearchBar tree={tree} setFile={setFile} setTree={setTree} setStack={setStack} reloadTree={reloadTree} isMobile={isMobile} />
                 
                 <span className="user-btn" onClick={toggleMenu}>
                     { avatarLink === "" ? (
@@ -158,8 +162,8 @@ export default function Interface({ toggleTheme, theme }) {
             <div className="content">
                 <UserTree user={user} tree={tree} setFile={setFile} reloadTree={reloadTree} isMobile={isMobile} return2main={return2main} stack={stack} setStack={setStack} />
                 <div className="right-box">
-                    <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} setavatarLink={setavatarLink} setTree={setTree} />
-                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} stack={stack} />
+                    <FileViewer user={user} reloadTree={reloadTree} file={file} return2main={return2main} setFile={setFile} setavatarLink={setavatarLink} setTree={setTree} isMobile={isMobile} />
+                    <FileZone user={user} reloadTree={reloadTree} setFile={setFile} tree={tree} stack={stack}/>
                     <MenuProfil user={user} setavatarLink={setavatarLink} avatarLink={avatarLink} reloadTree={reloadTree} />
                     {user?.role === "Admin" && (
                         <>

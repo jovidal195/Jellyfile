@@ -1,3 +1,6 @@
+# 0.1.6
+- enhanced mobile interface
+ 
 # version 0.1.5
 - bootstrap implemented
 
