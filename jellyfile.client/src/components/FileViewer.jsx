@@ -558,7 +558,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         <div className={`file-viewer submenus${isMobile ? " mobile" : ""}`}>
             <FontAwesomeIcon icon={faCircleLeft} id="arrow" onClick={return2main} />
             <div className="file-controller">
-                <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem' }}><FontAwesomeIcon icon={icon} />{file.name}</h2>
+                <h2 style={{ fontSize: window.innerWidth < 640 ? '1.2rem' : '1.5rem', padding: "0px 40px", whiteSpace: "normal", wordBreak: "normal", overflowWrap: "anywhere" }}><span style={{ whiteSpace: "nowrap" }}><FontAwesomeIcon icon={icon} />{" "}</span>{file.name}</h2>
                 <div style={{ display: "flex", gap: "10px", padding: "10px" }}>
                     <FontAwesomeIcon icon={faDownload} onClick={() => downloadLink(`/api/files/${file.uuid}/${encodeURIComponent(file.name)}?t=${Date.now()}`)} style={{ cursor: "pointer" }} />
                     {file.permission === 0 && (

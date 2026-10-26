@@ -29,7 +29,11 @@
 @media (max-width: 768px) {
     .file-controller form,
     .file-controller .PIN {
-        max-width: 200px;
+        max-width: 90%;
+        font-size: smaller;
+    }
+    .file-controller .PIN  .rdt_TableCol {
+        min-width: 0 !important;
     }
 }
 
