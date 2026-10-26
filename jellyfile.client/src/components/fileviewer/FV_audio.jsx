@@ -4,9 +4,11 @@ import ToggleSwitch from "../ToggleSwitch";
 function AudioViewer({
     file,
     tags,
+    updateMetadata,
     selectedTags,
     setSelectedTags,
-    syncFileTags
+    syncFileTags,
+    savedFields
 }) {
     return (
         <>
@@ -60,36 +62,68 @@ function AudioViewer({
             <form>
                 <div className="line-container">
                     <label>Auteur/Artiste</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.author || ""}
+                        onBlur={async e => updateMetadata({ author: e.target.value }, "author")}
+                    />
+                    <span className={`saved-check ${savedFields.author ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Album</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.collections || ""}
+                        onBlur={async e => updateMetadata({ collections: e.target.value }, "collections")}
+                    />
+                    <span className={`saved-check ${savedFields.collections ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Genre</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.type || ""}
+                        onBlur={async e => updateMetadata({ type: e.target.value }, "type")}
+                    />
+                    <span className={`saved-check ${savedFields.type ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <span>
                         <label>Date de création</label>
-                        <input type="date" />
+                        <input
+                            type="date"
+                            value={file.metadata?.creationDate?.split("T")[0] || ""}
+                            onChange={async e => updateMetadata({ creationDate: e.target.value })}
+                        />
                     </span>
                 </div>
 
                 <div className="line-container">
                     <label>Copyright</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.copyrightHolder || ""}
+                        onBlur={async e => updateMetadata({ copyrightHolder: e.target.value }, "copyrightHolder")}
+                    />
+                    <span className={`saved-check ${savedFields.copyrightHolder ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div>
                     <label>Généré par IA</label>
                     <ToggleSwitch
-                        checked={false}
-                        onChange={async val => { console.log(val); }}
+                        checked={file.metadata?.isAiGenerated}
+                        onChange={async val => updateMetadata({ isAiGenerated: val })}
                     />
                 </div>
             </form>

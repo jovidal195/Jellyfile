@@ -1,0 +1,16 @@
+﻿.saved-check {
+    display: inline-block;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 0;
+    color: #4caf50;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.saved-check.visible {
+    width: auto;
+    margin-left: 6px;
+    opacity: 1;
+}

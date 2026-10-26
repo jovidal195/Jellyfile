@@ -4,9 +4,11 @@ import PDFFlipbook from "../PDFFlipbook";
 function PdfViewer({
     file,
     tags,
+    updateMetadata,
     selectedTags,
     setSelectedTags,
-    syncFileTags
+    syncFileTags,
+    savedFields
 }) {
     return (
         <>
@@ -50,12 +52,26 @@ function PdfViewer({
             <form>
                 <div className="line-container">
                     <label>Auteur</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.author || ""}
+                        onBlur={async e => updateMetadata({ author: e.target.value }, "author")}
+                    />
+                    <span className={`saved-check ${savedFields.author ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Editeur</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.copyrightHolder || ""}
+                        onBlur={e => updateMetadata({ copyrightHolder: e.target.value }, "copyrightHolder")}
+                    />
+                    <span className={`saved-check ${savedFields.copyrightHolder ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
@@ -67,7 +83,14 @@ function PdfViewer({
 
                 <div className="line-container">
                     <label>Copyright</label>
-                    <input type="text" />
+                    <input
+                        type="text"
+                        defaultValue={file.metadata?.license || ""}
+                        onBlur={async e => updateMetadata({ license: e.target.value }, "license")}
+                    />
+                    <span className={`saved-check ${savedFields.license ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
             </form>
         </>

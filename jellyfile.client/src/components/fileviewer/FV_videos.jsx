@@ -1,5 +1,6 @@
 ﻿import AsyncCreatableSelect from 'react-select/async-creatable';
 import ToggleSwitch from "../ToggleSwitch";
+import "./FV_visual.css";
 
 function VideoViewer({
     file,
@@ -13,7 +14,8 @@ function VideoViewer({
     languageValue,
     setLanguageValue,
     subtitleValue,
-    setSubtitleValue
+    setSubtitleValue,
+    savedFields
 }) {
     return (
         <>
@@ -73,9 +75,12 @@ function VideoViewer({
                     <label>Auteur</label>
                     <input
                         type="text"
-                        value={file.metadata?.author || ""}
-                        onChange={async e => updateMetadata({ author: e.target.value })}
+                        defaultValue={file.metadata?.author || ""}
+                        onBlur={async e => updateMetadata({ author: e.target.value }, "author")}
                     />
+                    <span className={`saved-check ${savedFields.author ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
@@ -91,18 +96,24 @@ function VideoViewer({
                     <label>Copyright</label>
                     <input
                         type="text"
-                        value={file.metadata?.copyrightHolder || ""}
-                        onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                        defaultValue={file.metadata?.copyrightHolder || ""}
+                        onBlur={async e => updateMetadata({ copyrightHolder: e.target.value }, "copyrightHolder")}
                     />
+                    <span className={`saved-check ${savedFields.copyrightHolder ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Licence</label>
                     <input
                         type="text"
-                        value={file.metadata?.license || ""}
-                        onChange={async e => updateMetadata({ license: e.target.value })}
+                        defaultValue={file.metadata?.license || ""}
+                        onBlur={async e => updateMetadata({ license: e.target.value }, "license")}
                     />
+                    <span className={`saved-check ${savedFields.license ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
@@ -163,9 +174,12 @@ function VideoViewer({
                     <label>Version</label>
                     <input
                         type="text"
-                        value={file.metadata?.version || ""}
-                        onChange={async e => updateMetadata({ version: e.target.value })}
+                        defaultValue={file.metadata?.version || ""}
+                        onBlur={async e => updateMetadata({ version: e.target.value }, "version")}
                     />
+                    <span className={`saved-check ${savedFields.version ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>

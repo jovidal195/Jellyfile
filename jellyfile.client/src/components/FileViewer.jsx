@@ -38,6 +38,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
     const [pinsByFile, setPinsByFile] = useState({});
     const [tags, setTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState(file.tags || []);
+    const [savedFields, setSavedFields] = useState({});
     const pinInputRef = useRef(null);
     const deviceInputRef = useRef(null);
 
@@ -45,6 +46,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
     /*const [metadata, setMetadata] = useState(null);
     const [loadingMeta, setLoadingMeta] = useState(false);*/
 
+    /* PIN related */
     function generateRandomPin() {
         return Math.floor(10000 + Math.random() * 90000); // 5 chiffres
     }
@@ -75,46 +77,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         },
     };
 
-    const fileTypeIcons = {
-        "Autre": faFile,
-        "Image": faFileImage,
-        "Video": faFileVideo,
-        "Audio": faFileAudio,
-        "Document": faFilePdf,
-        "Archive": faFileArchive,
-        "Binary": faFile,
-        "Scripts": faFileCode,
-        "Fonts": faFileAlt
-    };
 
-    const icon = fileTypeIcons[file.fileTypeName] || faFile;
-
-    const openModal = (type, data = null) => {
-        setModalType(type);
-        setModalData(data);
-        if (type === "addPin") {
-            regenPin();
-        }
-        setModalOpen(true);
-    };
-
-    const subHeader = (
-        <div className="btn-pin-container">
-            <input
-                type="text"
-                placeholder="Recherche..."
-                value={filterText}
-                onChange={e => setFilterText(e.target.value)}
-                style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-            />
-            <button
-                onClick={() => openModal("addPin", null)}
-                className="btn-add-pin"
-            >
-                Ajouter un PIN
-            </button>
-        </div>
-    );
 
     const pinColumns = [
         {
@@ -165,7 +128,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                     //const pinUrl = `${window.location.origin}/pin/${file.uuid}/${file.name}`;
                     const pinUrl = `${window.location.origin}${row.linkPath}`;
                     navigator.clipboard.writeText(pinUrl)
-                        .then(() => toast("info","Lien copié dans le presse-papiers !"))
+                        .then(() => toast("info", "Lien copié dans le presse-papiers !"))
                         .catch(err => console.error("Erreur lors de la copie : ", err));
                 }}>URL</button>
             )
@@ -186,32 +149,6 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         };
     };
 
-    const deleteFile = async () => {
-        setModalOpen(false); // fermer le modal
-        try {
-            const response = await fetch(`/api/files/${file.uuid}/${file.name}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
-                toast("success", "Fichier supprimé");
-                setavatarLink(`/api/files/avatar/${user.username}?t=${Date.now()}`);
-                return2main();
-                reloadTree();
-            } else if (response.status === 403) {
-                toast("error", "Accès refusé");
-            } else if (response.status === 401) {
-                toast("error", "Session expirée");
-            } else {
-                const data = await response.json();
-                toast("error", data.message || "Erreur lors de la suppression");
-            }
-        } catch (err) {
-            console.error(err);
-            toast("error", "Erreur réseau ou serveur");
-        }
-    };
 
     const handleAddPin = async (e) => {
         e.preventDefault();
@@ -239,7 +176,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
             });
 
             const data = await response.json();
-        
+
             if (response.ok) {
                 toast("success", "Pin créé");
 
@@ -355,6 +292,76 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         }
     };
 
+    /* controle du contenu */
+    const fileTypeIcons = {
+        "Autre": faFile,
+        "Image": faFileImage,
+        "Video": faFileVideo,
+        "Audio": faFileAudio,
+        "Document": faFilePdf,
+        "Archive": faFileArchive,
+        "Binary": faFile,
+        "Scripts": faFileCode,
+        "Fonts": faFileAlt
+    };
+
+    const icon = fileTypeIcons[file.fileTypeName] || faFile;
+
+    const openModal = (type, data = null) => {
+        setModalType(type);
+        setModalData(data);
+        if (type === "addPin") {
+            regenPin();
+        }
+        setModalOpen(true);
+    };
+
+    const subHeader = (
+        <div className="btn-pin-container">
+            <input
+                type="text"
+                placeholder="Recherche..."
+                value={filterText}
+                onChange={e => setFilterText(e.target.value)}
+                style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+            />
+            <button
+                onClick={() => openModal("addPin", null)}
+                className="btn-add-pin"
+            >
+                Ajouter un PIN
+            </button>
+        </div>
+    );
+
+    /* gestion des actions sur le fichier */
+    const deleteFile = async () => {
+        setModalOpen(false); // fermer le modal
+        try {
+            const response = await fetch(`/api/files/${file.uuid}/${file.name}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+            });
+
+            if (response.ok) {
+                toast("success", "Fichier supprimé");
+                setavatarLink(`/api/files/avatar/${user.username}?t=${Date.now()}`);
+                return2main();
+                reloadTree();
+            } else if (response.status === 403) {
+                toast("error", "Accès refusé");
+            } else if (response.status === 401) {
+                toast("error", "Session expirée");
+            } else {
+                const data = await response.json();
+                toast("error", data.message || "Erreur lors de la suppression");
+            }
+        } catch (err) {
+            console.error(err);
+            toast("error", "Erreur réseau ou serveur");
+        }
+    };
+
     const setAvatar = async (file) => {
         console.log(file);
 
@@ -392,7 +399,13 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
         document.body.removeChild(link);
     }
 
-    const updateMetadata = async (changes) => {
+    const updateMetadata = async (changes, fieldName = null) => {
+        const hasChanges = Object.entries(changes).some(
+            ([key, value]) => (file.metadata?.[key] ?? "") !== value
+        );
+
+        if (!hasChanges) return;
+
         try {
             const resp = await fetch(`/api/files/${encodeURIComponent(file.uuid)}/metadata`, {
                 method: "PATCH",
@@ -412,6 +425,14 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                     updateNodeMetadata(setTree, file.uuid, updatedMeta);
                     return next;
                 });
+
+                if (fieldName) {
+                    setSavedFields(prev => ({ ...prev, [fieldName]: true }));
+
+                    setTimeout(() => {
+                        setSavedFields(prev => ({ ...prev, [fieldName]: false }));
+                    }, 700);
+                }
 
             } else {
                 const err = await resp.json().catch(() => ({ message: "Erreur" }));
@@ -587,6 +608,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         syncFileTags={syncFileTags}
                         updateMetadata={updateMetadata}
                         setAvatar={setAvatar}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Video" ? (
                     <VideoViewer
@@ -602,22 +624,27 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         setLanguageValue={setLanguageValue}
                         subtitleValue={subtitleValue}
                         setSubtitleValue={setSubtitleValue}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Audio" ? (
                     <AudioViewer
                         file={file}
                         tags={tags}
+                        updateMetadata={updateMetadata}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Document" && file.name.endsWith(".pdf") ? (
                     <PdfViewer
                         file={file}
                         tags={tags}
+                        updateMetadata={updateMetadata}
                         selectedTags={selectedTags}
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Fonts" ? (
                     <FontViewer
@@ -627,6 +654,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
                         updateMetadata={updateMetadata}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Archive" ? (
                     <ArchiveViewer
@@ -636,6 +664,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
                         updateMetadata={updateMetadata}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Binary" ? (
                     <BinaryViewer
@@ -645,6 +674,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
                         updateMetadata={updateMetadata}
+                        savedFields={savedFields}
                     />
                 ) : file.fileTypeName === "Scripts" ? (
                     <ScriptViewer
@@ -654,6 +684,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
                         updateMetadata={updateMetadata}
+                        savedFields={savedFields}
                     />
                 ) : (
                     <DefaultViewer
@@ -663,6 +694,7 @@ function FileViewer({ user, file, reloadTree, return2main, setFile, setavatarLin
                         setSelectedTags={setSelectedTags}
                         syncFileTags={syncFileTags}
                         updateMetadata={updateMetadata}
+                        savedFields={savedFields}
                     />
                 )}
 

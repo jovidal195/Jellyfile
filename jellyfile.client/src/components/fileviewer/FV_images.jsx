@@ -1,6 +1,6 @@
 ﻿import AsyncCreatableSelect from 'react-select/async-creatable';
 import ToggleSwitch from "../ToggleSwitch";
-
+import "./FV_visual.css";
 function ImageViewer({
     file,
     tags,
@@ -8,7 +8,8 @@ function ImageViewer({
     setSelectedTags,
     syncFileTags,
     updateMetadata,
-    setAvatar
+    setAvatar,
+    savedFields 
 }) {
     return (
         <>
@@ -69,9 +70,12 @@ function ImageViewer({
                     <label>Auteur</label>
                     <input
                         type="text"
-                        value={file.metadata?.author || ""}
-                        onChange={async e => updateMetadata({ author: e.target.value })}
+                        defaultValue={file.metadata?.author || ""}
+                        onBlur={async e => updateMetadata({ author: e.target.value }, "author")}
                     />
+                    <span className={`saved-check ${savedFields.author ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
@@ -87,18 +91,24 @@ function ImageViewer({
                     <label>Copyright</label>
                     <input
                         type="text"
-                        value={file.metadata?.copyrightHolder || ""}
-                        onChange={async e => updateMetadata({ copyrightHolder: e.target.value })}
+                        defaultValue={file.metadata?.copyrightHolder || ""}
+                        onBlur={async e => updateMetadata({ copyrightHolder: e.target.value }, "copyrightHolder")}
                     />
+                    <span className={`saved-check ${savedFields.copyrightHolder ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Licence</label>
                     <input
                         type="text"
-                        value={file.metadata?.license || ""}
-                        onChange={async e => updateMetadata({ license: e.target.value })}
+                        defaultValue={file.metadata?.license || ""}
+                        onBlur={async e => updateMetadata({ license: e.target.value }, "license")}
                     />
+                    <span className={`saved-check ${savedFields.license ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container" style={{ justifyContent: "space-between", marginRight: "20%" }}>
@@ -121,45 +131,60 @@ function ImageViewer({
                     <label>Format</label>
                     <input
                         type="text"
-                        value={file.metadata?.format || ""}
-                        onChange={async e => updateMetadata({ format: e.target.value })}
+                        defaultValue={file.metadata?.format || ""}
+                        onBlur={async e => updateMetadata({ format: e.target.value }, "format")}
                     />
+                    <span className={`saved-check ${savedFields.format ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Color Mode</label>
                     <input
                         type="text"
-                        value={file.metadata?.colorMode || ""}
-                        onChange={async e => updateMetadata({ colorMode: e.target.value })}
+                        defaultValue={file.metadata?.colorMode || ""}
+                        onBlur={async e => updateMetadata({ colorMode: e.target.value }, "colorMode")}
                     />
+                    <span className={`saved-check ${savedFields.colorMode ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>DPI</label>
                     <input
                         type="number"
-                        value={file.metadata?.dpi || ""}
-                        onChange={async e => updateMetadata({ dpi: parseInt(e.target.value) })}
+                        defaultValue={file.metadata?.dpi || ""}
+                        onBlur={async e => updateMetadata({ dpi: parseInt(e.target.value) }, "dpi")}
                     />
+                    <span className={`saved-check ${savedFields.dpi ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Bit Depth</label>
                     <input
                         type="number"
-                        value={file.metadata?.bitDepth || ""}
-                        onChange={async e => updateMetadata({ bitDepth: parseInt(e.target.value) })}
+                        defaultValue={file.metadata?.bitDepth || ""}
+                        onBlur={async e => updateMetadata({ bitDepth: parseInt(e.target.value) }, "bitDepth")}
                     />
+                    <span className={`saved-check ${savedFields.bitDepth ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
 
                 <div className="line-container">
                     <label>Collections</label>
                     <input
                         type="text"
-                        value={file.metadata?.collections || ""}
-                        onChange={async e => updateMetadata({ collections: e.target.value })}
+                        defaultValue={file.metadata?.collections || ""}
+                        onBlur={async e => updateMetadata({ collections: e.target.value }, "collections")}
                     />
+                    <span className={`saved-check ${savedFields.collections ? "visible" : ""}`}>
+                        ✓
+                    </span>
                 </div>
             </form>
         </>

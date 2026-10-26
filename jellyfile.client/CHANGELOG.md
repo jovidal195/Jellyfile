@@ -1,6 +1,7 @@
 # 0.1.7
 - fix on the interface css
 - added software version number for admin
+- added visual confirmation on field updates
 
 # 0.1.6
 - enhanced mobile interface

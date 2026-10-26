@@ -488,6 +488,7 @@ namespace Jellyfile.Server.Controllers
                     meta.License,
                     meta.CopyrightHolder,
                     meta.CreationDate,
+                    meta.Collections,
                     meta.IsVector,
                     meta.Format,
                     meta.ColorMode,

@@ -45,14 +45,14 @@ function App() {
 
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    console.log(`admin-exists attempt ${attempt}/${maxAttempts}`);
+                    //console.log(`admin-exists attempt ${attempt}/${maxAttempts}`);
 
                     const response = await fetch('/api/system/admin-exists');
 
                     if (response.ok) {
                         const data = await response.json();
 
-                        console.log("admin-exists success:", data);
+                        //console.log("admin-exists success:", data);
 
                         if (!cancelled) {
                             setAdminExists(data.adminExists);
@@ -92,9 +92,9 @@ function App() {
         };
     }, [adminExists]);
 
-    useEffect(() => {
+    /*useEffect(() => {
         console.log("adminExists changed:", adminExists);
-    }, [adminExists]);
+    }, [adminExists]);*/
 
     const toggleTheme = () => {
         const newTheme = theme === "dark" ? "light" : "dark";
